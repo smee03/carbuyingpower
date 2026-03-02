@@ -6,30 +6,29 @@ import { supabase } from "@/lib/supabaseClient";
 
 type BuyerRequest = {
   id: string;
+  desired_models: string;
+  condition: string;
   zip: string;
   radius_miles: number;
-  desired_models: string;
-  condition: "new" | "used" | "either";
-  credit_tier: "760+" | "720-759" | "680-719" | "620-679" | "<620";
+  credit_tier: string;
   term_months: number;
   down_payment: number;
-  status: "open" | "paused" | "accepted" | "closed";
+  status: string;
   created_at: string;
 };
 
 export default function BuyerRequestsPage() {
+  const [requests, setRequests] = useState<BuyerRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
-  const [items, setItems] = useState<BuyerRequest[]>([]);
 
   useEffect(() => {
-    (async () => {
-      setMsg("");
+    async function load() {
       setLoading(true);
+      setMsg("");
 
       const { data: auth } = await supabase.auth.getUser();
-      const user = auth.user;
-      if (!user) {
+      if (!auth.user) {
         setMsg("Not signed in. Go to /auth");
         setLoading(false);
         return;
@@ -38,58 +37,134 @@ export default function BuyerRequestsPage() {
       const { data, error } = await supabase
         .from("buyer_requests")
         .select("*")
-        .eq("buyer_id", user.id)
+        .eq("buyer_id", auth.user.id)
         .order("created_at", { ascending: false });
 
-      if (error) setMsg(error.message);
-      setItems((data || []) as BuyerRequest[]);
+      if (error) {
+        setMsg(error.message);
+      } else {
+        setRequests(data || []);
+      }
+
       setLoading(false);
-    })();
+    }
+
+    load();
   }, []);
 
+  // 📊 Dashboard stats
+  const openCount = requests.filter((r) => r.status === "open").length;
+  const acceptedCount = requests.filter((r) => r.status === "accepted").length;
+  const offerCount = 0; // wire later
+
   return (
-    <main className="p-6 max-w-3xl mx-auto space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Your Buyer Requests</h1>
-        <Link className="border px-4 py-2" href="/buyer/requests/new">
-          New request
-        </Link>
-      </div>
+    <main className="min-h-screen bg-gray-50 p-8">
+      <div className="max-w-6xl mx-auto space-y-8">
 
-      {msg && <p className="text-sm">{msg}</p>}
-      {loading && <p>Loading…</p>}
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Buyer Dashboard
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Manage your vehicle requests and compare dealer offers.
+            </p>
+          </div>
 
-      {!loading && items.length === 0 && (
-        <p className="text-sm">
-          No requests yet. Create one and dealers can start sending structured offers.
-        </p>
-      )}
-
-      <div className="space-y-3">
-        {items.map((r) => (
           <Link
-            key={r.id}
-            href={`/buyer/requests/${r.id}`}
-            className="block border p-4 hover:bg-gray-50"
+            href="/buyer/new"
+            className="bg-black text-white px-5 py-2 rounded-xl hover:opacity-90 transition"
           >
-            <div className="flex items-center justify-between">
-              <div className="font-medium">
-                {r.desired_models} ({r.condition})
-              </div>
-              <div className="text-sm">{r.status}</div>
-            </div>
-
-            <div className="text-sm mt-2">
-              ZIP {r.zip} • {r.radius_miles} mi • Credit: {r.credit_tier} • Term:{" "}
-              {r.term_months} • Down: ${r.down_payment}
-            </div>
-
-            <div className="text-xs mt-2 opacity-70">
-              Created {new Date(r.created_at).toLocaleString()}
-            </div>
+            + New Request
           </Link>
-        ))}
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-6">
+          <StatCard title="Open Requests" value={openCount} />
+          <StatCard title="Offers Received" value={offerCount} />
+          <StatCard title="Accepted Deals" value={acceptedCount} />
+        </div>
+
+        {/* Content */}
+        {loading && <p>Loading…</p>}
+        {msg && <p className="text-sm text-red-600">{msg}</p>}
+
+        {!loading && requests.length === 0 && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center text-gray-500">
+            No requests yet. Create your first one.
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {requests.map((req) => (
+            <RequestCard key={req.id} request={req} />
+          ))}
+        </div>
+
       </div>
     </main>
+  );
+}
+
+/* ---------------------- COMPONENTS ---------------------- */
+
+function StatCard({ title, value }: { title: string; value: number }) {
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+      <div className="text-sm text-gray-500">{title}</div>
+      <div className="text-3xl font-semibold mt-2">{value}</div>
+    </div>
+  );
+}
+
+function RequestCard({ request }: { request: BuyerRequest }) {
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-4 hover:shadow-md transition">
+      
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">
+          {request.desired_models}
+        </h2>
+        <StatusBadge status={request.status} />
+      </div>
+
+      <div className="text-sm text-gray-600 space-y-1">
+        <div>
+          ZIP {request.zip} • {request.radius_miles} mi
+        </div>
+        <div>
+          Credit: {request.credit_tier} • Term: {request.term_months} mo
+        </div>
+        <div>
+          Down: ${request.down_payment}
+        </div>
+      </div>
+
+      <div className="pt-2">
+        <Link
+          href={`/buyer/requests/${request.id}`}
+          className="inline-block bg-black text-white px-4 py-2 rounded-xl hover:opacity-90 transition"
+        >
+          View Offers
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const color =
+    status === "open"
+      ? "bg-green-100 text-green-700"
+      : status === "accepted"
+      ? "bg-blue-100 text-blue-700"
+      : "bg-gray-100 text-gray-700";
+
+  return (
+    <span className={`px-3 py-1 rounded-full text-xs font-medium ${color}`}>
+      {status}
+    </span>
   );
 }
