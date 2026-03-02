@@ -1,3 +1,7 @@
+import { NextRequest, NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { requireActionsKey } from "@/lib/actionsAuth";
+
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
