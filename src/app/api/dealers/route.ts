@@ -2,11 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireActionsKey } from "@/lib/actionsAuth";
 
-export async function POST(req: NextRequest) {
-  const auth = requireActionsKey(req);
-  if (!auth.ok) {
-    return NextResponse.json({ error: auth.message }, { status: auth.status });
-  }
+export async function GET() {
+  return Response.json({ status: "dealers route working" });
+}
 
   const body = await req.json();
   const { dealer_id, display_name } = body;
