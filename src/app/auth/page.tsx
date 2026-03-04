@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 export default function AuthPage() {
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
-  const [mode, setMode] = useState<"signin" | "signup">("signup");
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [msg, setMsg] = useState("");
   const router = useRouter();
 

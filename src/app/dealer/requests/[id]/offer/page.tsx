@@ -526,7 +526,7 @@ export default function DealerOfferPage() {
       {req && (
         <div className="border p-4 space-y-2">
           <div className="font-medium">
-            Buyer wants: {req.desired_models} {req.condition === 'new' && (req.year_min || req.year_max) ? `(${req.year_min && req.year_max ? `${req.year_min}–${req.year_max}` : `${req.year_min ?? req.year_max}`})` : `(${req.condition})`}
+            Buyer wants: {req.desired_models} {(req.year_min || req.year_max) ? `(${req.year_min && req.year_max ? `${req.year_min}–${req.year_max}` : `${req.year_min ?? req.year_max}`})` : `(${req.condition})`}
           </div>
           <div className="text-sm">
             ZIP {req.zip} • {req.radius_miles} mi • Credit: {req.credit_tier} • Term:{" "}
