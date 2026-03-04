@@ -17,7 +17,7 @@
 */
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -130,6 +130,7 @@ type SortKey = "otd" | "payment" | "addons";
 
 export default function BuyerRequestDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const id = useMemo(() => params.id, [params]);
 
   const [loading, setLoading] = useState(true);
@@ -266,49 +267,45 @@ export default function BuyerRequestDetailPage() {
     setMsg("");
     setDecidingOfferId(offer.id);
 
-    if (decision === "accepted") {
-      const { error: offerError } = await supabase
-        .from("dealer_offers")
-        .update({ status: "accepted" })
-        .eq("id", offer.id);
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
 
-      if (offerError) {
-        setMsg(offerError.message);
-        setDecidingOfferId(null);
-        return;
-      }
-
-      await supabase.from("buyer_requests").update({ status: "accepted" }).eq("id", req.id);
-
-      setOffers((prev) => prev.map((o) => (o.id === offer.id ? { ...o, status: "accepted" } : o)));
-      setReq({ ...req, status: "accepted" });
+    if (sessionError || !session) {
+      setMsg("Not authenticated. Please sign in again.");
       setDecidingOfferId(null);
       return;
     }
 
-    const declineWithReason = await supabase
-      .from("dealer_offers")
-      .update({ status: "expired", decline_reason: note })
-      .eq("id", offer.id);
+    const res = await fetch(`/api/dealer-offers/${offer.id}/decision`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        decision,
+        reason: decision === "declined" ? note : undefined,
+      }),
+    });
 
-    if (declineWithReason.error) {
-      const declineFallback = await supabase
-        .from("dealer_offers")
-        .update({ status: "expired" })
-        .eq("id", offer.id);
-
-      if (declineFallback.error) {
-        setMsg(declineFallback.error.message);
-        setDecidingOfferId(null);
-        return;
-      }
+    const payload = await res.json();
+    if (!res.ok) {
+      setMsg(payload.message || "Failed to update offer");
+      setDecidingOfferId(null);
+      return;
     }
 
-    setOffers((prev) =>
-      prev.map((o) =>
-        o.id === offer.id ? { ...o, status: "expired", decline_reason: note } : o
-      )
-    );
+    if (decision === "accepted") {
+      setOffers((prev) => prev.map((o) => (o.id === offer.id ? { ...o, status: "accepted" } : o)));
+      setReq({ ...req, status: "accepted" });
+      setDecidingOfferId(null);
+      router.push(`/buyer/requests/${req.id}/accepted?offerId=${offer.id}`);
+      return;
+    }
+
+    setOffers((prev) => prev.map((o) => (o.id === offer.id ? { ...o, status: "expired", decline_reason: note } : o)));
     setDecidingOfferId(null);
   }
 
