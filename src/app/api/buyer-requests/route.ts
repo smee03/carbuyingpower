@@ -25,6 +25,15 @@ export async function POST(req: NextRequest) {
     const model = body.model ?? "";
     const desired_models = `${make}${model ? ` ${model}` : ""}`.trim();
 
+    // Map form credit tier to database format
+    const creditTierMap: { [key: string]: string } = {
+      excellent: "760+",
+      good: "720-759",
+      fair: "680-719",
+      poor: "<620",
+    };
+    const credit_tier = creditTierMap[body.credit_tier] ?? "720-759";
+
     const payload = {
       buyer_id: user.id,
       make: make,
@@ -41,7 +50,7 @@ export async function POST(req: NextRequest) {
       zip: body.zip ?? "",
       radius_miles: body.radius_miles ?? 25,
       delivery_preference: body.delivery_preference ?? "both",
-      credit_tier: body.credit_tier ?? "good",
+      credit_tier: credit_tier,
       term_months: body.term_months ?? 60,
       down_payment: body.down_payment ?? 0,
       status: "open",
