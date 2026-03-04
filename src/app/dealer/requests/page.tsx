@@ -58,7 +58,12 @@ export default function DealerRequestsPage() {
 
   return (
     <main className="p-6 max-w-4xl mx-auto space-y-4">
-      <h1 className="text-2xl font-semibold">Open Buyer Requests</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Open Buyer Requests</h1>
+        <Link href="/dealer/account" className="underline text-sm">
+          Account
+        </Link>
+      </div>
 
       {msg && <p className="text-sm">{msg}</p>}
       {loading && <p>Loading…</p>}
@@ -72,7 +77,11 @@ export default function DealerRequestsPage() {
           <div key={r.id} className="border p-4">
             <div className="flex items-center justify-between">
               <div className="font-medium">
-                {r.make || r.desired_models}{r.model ? ` ${r.model}` : ''} {r.condition === 'new' && (r.year_min || r.year_max) ? `(${r.year_min && r.year_max ? `${r.year_min}–${r.year_max}` : `${r.year_min ?? r.year_max}`})` : `(${r.condition})`}
+                {r.make || r.desired_models}
+                {r.model ? ` ${r.model}` : ""}{" "}
+                {r.year_min || r.year_max
+                  ? `(${r.year_min && r.year_max ? `${r.year_min}–${r.year_max}` : `${r.year_min ?? r.year_max}`})`
+                  : `(${r.condition})`}
               </div>
               <Link
                 className="border px-3 py-1"
