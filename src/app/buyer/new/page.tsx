@@ -343,7 +343,7 @@ export default function NewBuyerRequestPage() {
                     <option value="excellent">Excellent (750+)</option>
                     <option value="good">Good (700-749)</option>
                     <option value="fair">Fair (650-699)</option>
-                    <option value="poor">Poor (&lt;650)</option>
+                    <option value="poor">Poor (620-679)</option>
                   </select>
                 </div>
 

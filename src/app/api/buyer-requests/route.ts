@@ -25,14 +25,19 @@ export async function POST(req: NextRequest) {
     const model = body.model ?? "";
     const desired_models = `${make}${model ? ` ${model}` : ""}`.trim();
 
-    // Map form credit tier to database format
-    const creditTierMap: { [key: string]: string } = {
+    // Map UI labels to database-safe tiers and accept DB tier values directly.
+    const creditTierMap: Record<string, string> = {
       excellent: "760+",
       good: "720-759",
       fair: "680-719",
-      poor: "<620",
+      poor: "620-679",
+      "760+": "760+",
+      "720-759": "720-759",
+      "680-719": "680-719",
+      "620-679": "620-679",
+      "<620": "<620",
     };
-    const credit_tier = creditTierMap[body.credit_tier] ?? "720-759";
+    const credit_tier = creditTierMap[String(body.credit_tier ?? "").trim()] ?? "720-759";
 
     const payload = {
       buyer_id: user.id,
