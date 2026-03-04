@@ -72,6 +72,10 @@ type DealerOffer = {
   created_at: string;
 };
 
+function money(value: number | null | undefined) {
+  return `$${Number(value || 0).toLocaleString()}`;
+}
+
 function addonsTotal(addons: Addon[] | null | undefined) {
   if (!Array.isArray(addons)) return 0;
   return addons.reduce((sum, a) => sum + (Number(a?.amount) || 0), 0);
@@ -139,15 +143,15 @@ export default function BuyerRequestDetailPage() {
     const uuidRegex =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-    if (!uuidRegex.test(id)) {
-      setMsg("Invalid request ID.");
-      setReq(null);
-      setOffers([]);
-      setLoading(false);
-      return;
-    }
-
     (async () => {
+      if (!uuidRegex.test(id)) {
+        setMsg("Invalid request ID.");
+        setReq(null);
+        setOffers([]);
+        setLoading(false);
+        return;
+      }
+
       setMsg("");
       setLoading(true);
 
@@ -277,12 +281,14 @@ export default function BuyerRequestDetailPage() {
             {sortedOffers.map((o) => {
               const aTotal = addonsTotal(o.addons);
               const warnings = getOfferWarnings(o);
+              const vehicleSubtotal = o.selling_price - o.dealer_discount - o.rebates + aTotal;
+              const feesTotal = o.doc_fee + o.tax + o.title_registration + o.other_fees;
 
               return (
                 <div key={o.id} className="border p-4 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="font-medium">
-                      Offer • OTD <span className="font-semibold">${o.otd_total}</span>
+                      Offer • OTD <span className="font-semibold">{money(o.otd_total)}</span>
                     </div>
                     <div className="text-xs opacity-70">
                       {new Date(o.created_at).toLocaleString()}
@@ -301,31 +307,69 @@ export default function BuyerRequestDetailPage() {
                     </div>
                   )}
 
-                  <div className="text-sm">
-                    Selling: ${o.selling_price} • Discount: ${o.dealer_discount} • Rebates: ${o.rebates}
-                  </div>
-
-                  <div className="text-sm">
-                    Add-ons: <span className="font-medium">${aTotal}</span>
-                    {Array.isArray(o.addons) && o.addons.length > 0 && (
-                      <ul className="list-disc ml-6 mt-1">
-                        {o.addons.map((a, idx) => (
-                          <li key={idx}>
-                            {a.name || "(unnamed)"}: ${a.amount || 0}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-
-                  <div className="text-sm">
-                    Doc: ${o.doc_fee} • Tax: ${o.tax} • Title/Reg: ${o.title_registration} • Other: ${o.other_fees}
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="bg-gray-50 px-3 py-2 text-sm font-medium">OTD Breakdown</div>
+                    <div className="text-sm">
+                      <div className="grid grid-cols-2 px-3 py-2 border-t">
+                        <span>Selling price</span>
+                        <span className="text-right">{money(o.selling_price)}</span>
+                      </div>
+                      <div className="grid grid-cols-2 px-3 py-2 border-t">
+                        <span>Dealer discount</span>
+                        <span className="text-right">-{money(o.dealer_discount)}</span>
+                      </div>
+                      <div className="grid grid-cols-2 px-3 py-2 border-t">
+                        <span>Rebates</span>
+                        <span className="text-right">-{money(o.rebates)}</span>
+                      </div>
+                      <div className="grid grid-cols-2 px-3 py-2 border-t">
+                        <span>Add-ons</span>
+                        <span className="text-right">{money(aTotal)}</span>
+                      </div>
+                      {Array.isArray(o.addons) && o.addons.length > 0 && (
+                        <div className="px-3 pb-2 text-xs text-gray-600">
+                          {o.addons.map((a, idx) => (
+                            <div key={idx}>
+                              {a.name || "(unnamed)"}: {money(a.amount || 0)}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div className="grid grid-cols-2 px-3 py-2 border-t font-medium">
+                        <span>Vehicle subtotal</span>
+                        <span className="text-right">{money(vehicleSubtotal)}</span>
+                      </div>
+                      <div className="grid grid-cols-2 px-3 py-2 border-t">
+                        <span>Doc fee</span>
+                        <span className="text-right">{money(o.doc_fee)}</span>
+                      </div>
+                      <div className="grid grid-cols-2 px-3 py-2 border-t">
+                        <span>Tax</span>
+                        <span className="text-right">{money(o.tax)}</span>
+                      </div>
+                      <div className="grid grid-cols-2 px-3 py-2 border-t">
+                        <span>Title/registration</span>
+                        <span className="text-right">{money(o.title_registration)}</span>
+                      </div>
+                      <div className="grid grid-cols-2 px-3 py-2 border-t">
+                        <span>Other fees</span>
+                        <span className="text-right">{money(o.other_fees)}</span>
+                      </div>
+                      <div className="grid grid-cols-2 px-3 py-2 border-t font-medium">
+                        <span>Fees subtotal</span>
+                        <span className="text-right">{money(feesTotal)}</span>
+                      </div>
+                      <div className="grid grid-cols-2 px-3 py-2 border-t bg-gray-50 font-semibold">
+                        <span>Out-the-door total</span>
+                        <span className="text-right">{money(o.otd_total)}</span>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="text-sm">
                     Est. payment:{" "}
                     <span className="font-medium">
-                      {o.monthly_payment_est ? `$${o.monthly_payment_est}/mo` : "—"}
+                      {o.monthly_payment_est ? `${money(o.monthly_payment_est)}/mo` : "—"}
                     </span>
                     {o.assumed_apr != null && (
                       <span className="opacity-70">

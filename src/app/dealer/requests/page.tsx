@@ -30,6 +30,7 @@ export default function DealerRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
   const [items, setItems] = useState<BuyerRequest[]>([]);
+  const [submittedRequestIds, setSubmittedRequestIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     (async () => {
@@ -52,6 +53,19 @@ export default function DealerRequestsPage() {
 
       if (error) setMsg(error.message);
       setItems((data || []) as BuyerRequest[]);
+
+      const { data: myOffers, error: myOffersError } = await supabase
+        .from("dealer_offers")
+        .select("request_id, status")
+        .eq("dealer_id", auth.user.id)
+        .in("status", ["submitted", "accepted"]);
+
+      if (myOffersError) {
+        setMsg(myOffersError.message);
+      } else {
+        setSubmittedRequestIds(new Set((myOffers || []).map((o) => o.request_id)));
+      }
+
       setLoading(false);
     })();
   }, []);
@@ -60,9 +74,14 @@ export default function DealerRequestsPage() {
     <main className="p-6 max-w-4xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Open Buyer Requests</h1>
-        <Link href="/dealer/account" className="underline text-sm">
-          Account
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link href="/dealer/offers" className="underline text-sm">
+            Offers
+          </Link>
+          <Link href="/dealer/account" className="underline text-sm">
+            Account
+          </Link>
+        </div>
       </div>
 
       {msg && <p className="text-sm">{msg}</p>}
@@ -83,12 +102,18 @@ export default function DealerRequestsPage() {
                   ? `(${r.year_min && r.year_max ? `${r.year_min}–${r.year_max}` : `${r.year_min ?? r.year_max}`})`
                   : `(${r.condition})`}
               </div>
-              <Link
-                className="border px-3 py-1"
-                href={`/dealer/requests/${r.id}/offer`}
-              >
-                Make offer
-              </Link>
+              {submittedRequestIds.has(r.id) ? (
+                <span className="border border-green-200 bg-green-50 text-green-700 px-3 py-1 rounded">
+                  Offer submitted
+                </span>
+              ) : (
+                <Link
+                  className="border px-3 py-1"
+                  href={`/dealer/requests/${r.id}/offer`}
+                >
+                  Make offer
+                </Link>
+              )}
             </div>
 
             <div className="text-sm mt-2">

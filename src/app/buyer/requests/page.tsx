@@ -1,6 +1,5 @@
 "use client";
 
-import UserAccount from "@/components/UserAccount";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
@@ -28,6 +27,7 @@ type BuyerRequest = {
 
 export default function BuyerRequestsPage() {
   const [requests, setRequests] = useState<BuyerRequest[]>([]);
+  const [offerCount, setOfferCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
 
@@ -52,7 +52,25 @@ export default function BuyerRequestsPage() {
       if (error) {
         setMsg(error.message);
       } else {
-        setRequests(data || []);
+        const loadedRequests = (data || []) as BuyerRequest[];
+        setRequests(loadedRequests);
+
+        const requestIds = loadedRequests.map((r) => r.id);
+        if (requestIds.length === 0) {
+          setOfferCount(0);
+        } else {
+          const { count, error: offerError } = await supabase
+            .from("dealer_offers")
+            .select("id", { count: "exact", head: true })
+            .in("request_id", requestIds)
+            .in("status", ["submitted", "accepted"]);
+
+          if (offerError) {
+            setMsg(offerError.message);
+          } else {
+            setOfferCount(count ?? 0);
+          }
+        }
       }
 
       setLoading(false);
@@ -64,7 +82,6 @@ export default function BuyerRequestsPage() {
   // 📊 Dashboard stats
   const openCount = requests.filter((r) => r.status === "open").length;
   const acceptedCount = requests.filter((r) => r.status === "accepted").length;
-  const offerCount = 0; // wire later
 
   return (
     <main className="min-h-screen bg-gray-50 p-8">
