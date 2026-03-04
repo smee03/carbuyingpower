@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
       make: make,
       model: model,
       desired_models: desired_models,
+      condition: body.condition_types ?? "used",
       payment_method: body.payment_method ?? "finance",
       condition_types: body.condition_types ?? "used",
       min_price: body.min_price ?? null,
