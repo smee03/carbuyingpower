@@ -21,10 +21,15 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
 
+    const make = body.make ?? "";
+    const model = body.model ?? "";
+    const desired_models = `${make}${model ? ` ${model}` : ""}`.trim();
+
     const payload = {
       buyer_id: user.id,
-      make: body.make ?? "",
-      model: body.model ?? "",
+      make: make,
+      model: model,
+      desired_models: desired_models,
       payment_method: body.payment_method ?? "finance",
       condition_types: body.condition_types ?? "used",
       min_price: body.min_price ?? null,
