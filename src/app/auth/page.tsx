@@ -91,18 +91,20 @@ export default function AuthPage() {
         Continue
       </button>
 
-      {mode === "signin" && (
-        <button className="underline text-sm" onClick={forgotPassword}>
-          Forgot password?
+      <div className="space-y-2">
+        <button
+          className="underline text-sm"
+          onClick={() => setMode(mode === "signup" ? "signin" : "signup")}
+        >
+          {mode === "signup" ? "Sign In" : "Create Account"}
         </button>
-      )}
 
-      <button
-        className="underline text-sm"
-        onClick={() => setMode(mode === "signup" ? "signin" : "signup")}
-      >
-        Switch to {mode === "signup" ? "sign in" : "create account"}
-      </button>
+        {mode === "signin" && (
+          <button className="block underline text-sm" onClick={forgotPassword}>
+            Forgot Password
+          </button>
+        )}
+      </div>
 
       {msg && <p className="text-sm">{msg}</p>}
     </main>
