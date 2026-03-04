@@ -307,27 +307,27 @@ export default function BuyerRequestDetailPage() {
                     </div>
                   )}
 
-                  <div className="border rounded-lg overflow-hidden">
-                    <div className="bg-gray-50 px-3 py-2 text-sm font-medium">OTD Breakdown</div>
-                    <div className="text-sm">
-                      <div className="grid grid-cols-2 px-3 py-2 border-t">
+                  <div className="border rounded-lg overflow-hidden bg-white text-black">
+                    <div className="bg-white px-3 py-2 text-sm font-semibold text-black">OTD Breakdown</div>
+                    <div className="text-sm text-black">
+                      <div className="grid grid-cols-2 px-3 py-2 border-t text-black">
                         <span>Selling price</span>
                         <span className="text-right">{money(o.selling_price)}</span>
                       </div>
-                      <div className="grid grid-cols-2 px-3 py-2 border-t">
+                      <div className="grid grid-cols-2 px-3 py-2 border-t text-black">
                         <span>Dealer discount</span>
                         <span className="text-right">-{money(o.dealer_discount)}</span>
                       </div>
-                      <div className="grid grid-cols-2 px-3 py-2 border-t">
+                      <div className="grid grid-cols-2 px-3 py-2 border-t text-black">
                         <span>Rebates</span>
                         <span className="text-right">-{money(o.rebates)}</span>
                       </div>
-                      <div className="grid grid-cols-2 px-3 py-2 border-t">
+                      <div className="grid grid-cols-2 px-3 py-2 border-t text-black">
                         <span>Add-ons</span>
                         <span className="text-right">{money(aTotal)}</span>
                       </div>
                       {Array.isArray(o.addons) && o.addons.length > 0 && (
-                        <div className="px-3 pb-2 text-xs text-gray-600">
+                        <div className="px-3 pb-2 text-xs text-black">
                           {o.addons.map((a, idx) => (
                             <div key={idx}>
                               {a.name || "(unnamed)"}: {money(a.amount || 0)}
@@ -335,49 +335,47 @@ export default function BuyerRequestDetailPage() {
                           ))}
                         </div>
                       )}
-                      <div className="grid grid-cols-2 px-3 py-2 border-t font-medium">
+                      <div className="grid grid-cols-2 px-3 py-2 border-t font-medium text-black">
                         <span>Vehicle subtotal</span>
                         <span className="text-right">{money(vehicleSubtotal)}</span>
                       </div>
-                      <div className="grid grid-cols-2 px-3 py-2 border-t">
+                      <div className="grid grid-cols-2 px-3 py-2 border-t text-black">
                         <span>Doc fee</span>
                         <span className="text-right">{money(o.doc_fee)}</span>
                       </div>
-                      <div className="grid grid-cols-2 px-3 py-2 border-t">
+                      <div className="grid grid-cols-2 px-3 py-2 border-t text-black">
                         <span>Tax</span>
                         <span className="text-right">{money(o.tax)}</span>
                       </div>
-                      <div className="grid grid-cols-2 px-3 py-2 border-t">
+                      <div className="grid grid-cols-2 px-3 py-2 border-t text-black">
                         <span>Title/registration</span>
                         <span className="text-right">{money(o.title_registration)}</span>
                       </div>
-                      <div className="grid grid-cols-2 px-3 py-2 border-t">
+                      <div className="grid grid-cols-2 px-3 py-2 border-t text-black">
                         <span>Other fees</span>
                         <span className="text-right">{money(o.other_fees)}</span>
                       </div>
-                      <div className="grid grid-cols-2 px-3 py-2 border-t font-medium">
+                      <div className="grid grid-cols-2 px-3 py-2 border-t font-medium text-black">
                         <span>Fees subtotal</span>
                         <span className="text-right">{money(feesTotal)}</span>
                       </div>
-                      <div className="grid grid-cols-2 px-3 py-2 border-t bg-gray-50 font-semibold">
+                      <div className="grid grid-cols-2 px-3 py-2 border-t bg-white font-semibold text-black">
                         <span>Out-the-door total</span>
                         <span className="text-right">{money(o.otd_total)}</span>
                       </div>
+                      <div className="grid grid-cols-2 px-3 py-2 border-t font-semibold text-black">
+                        <span>Est. payment</span>
+                        <span className="text-right">
+                          {o.monthly_payment_est ? `${money(o.monthly_payment_est)}/mo` : "—"}
+                        </span>
+                      </div>
+                      {o.assumed_apr != null && (
+                        <div className="px-3 py-2 border-t text-xs font-semibold text-black">
+                          APR {o.assumed_apr}% • {o.assumed_term_months ?? "?"} mo • Down $
+                          {o.assumed_down_payment ?? 0}
+                        </div>
+                      )}
                     </div>
-                  </div>
-
-                  <div className="text-sm">
-                    Est. payment:{" "}
-                    <span className="font-medium">
-                      {o.monthly_payment_est ? `${money(o.monthly_payment_est)}/mo` : "—"}
-                    </span>
-                    {o.assumed_apr != null && (
-                      <span className="opacity-70">
-                        {" "}
-                        (APR {o.assumed_apr}% • {o.assumed_term_months ?? "?"} mo • Down $
-                        {o.assumed_down_payment ?? 0})
-                      </span>
-                    )}
                   </div>
                 </div>
               );
