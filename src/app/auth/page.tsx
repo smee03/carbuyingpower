@@ -25,6 +25,23 @@ export default function AuthPage() {
     router.push("/onboarding");
   }
 
+  async function forgotPassword() {
+    setMsg("");
+    if (!email) return setMsg("Enter your email first");
+
+    const redirectTo =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/auth/update-password`
+        : undefined;
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo,
+    });
+
+    if (error) return setMsg(error.message);
+    setMsg("Password reset email sent. Check your inbox.");
+  }
+
   return (
     <main className="p-6 max-w-md mx-auto space-y-4">
       <h1 className="text-2xl font-semibold">
@@ -48,6 +65,12 @@ export default function AuthPage() {
       <button className="border px-4 py-2 w-full" onClick={submit}>
         Continue
       </button>
+
+      {mode === "signin" && (
+        <button className="underline text-sm" onClick={forgotPassword}>
+          Forgot password?
+        </button>
+      )}
 
       <button
         className="underline text-sm"
