@@ -45,7 +45,7 @@ export default function UserAccount() {
         className="flex items-center gap-2 font-medium hover:opacity-80"
       >
         {profile.display_name}
-        <span className="text-xs text-gray-500">▾</span>
+        <span className="text-xs text-black">▾</span>
       </button>
 
       {/* Dropdown */}

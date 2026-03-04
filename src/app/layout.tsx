@@ -30,7 +30,7 @@ export default function RootLayout({
       <body className="bg-gray-50">
 
         {/* Top Navbar */}
-        <header className="bg-white border-b border-gray-200">
+        <header className="bg-white border-b border-gray-200 text-black">
           <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
 
             {/* Logo / App Name */}
