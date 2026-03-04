@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 
 type Profile = {
@@ -52,9 +53,15 @@ export default function UserAccount() {
       {open && (
         <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-md p-3 space-y-2 text-sm">
 
-          <div className="text-gray-500">
-            {profile.role.charAt(0).toUpperCase() + profile.role.slice(1)} Account
-          </div>
+          {profile.role === "dealer" ? (
+            <Link href="/dealer/account" className="block text-gray-700 hover:underline">
+              Dealer Account
+            </Link>
+          ) : (
+            <div className="text-gray-500">
+              {profile.role.charAt(0).toUpperCase() + profile.role.slice(1)} Account
+            </div>
+          )}
 
           <button
             onClick={logout}

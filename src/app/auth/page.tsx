@@ -22,6 +22,31 @@ export default function AuthPage() {
 
     if (res.error) return setMsg(res.error.message);
 
+    if (mode === "signin") {
+      const signedInUser = res.data.user;
+      if (!signedInUser) {
+        return setMsg("Check your email for a confirmation link, then sign in.");
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", signedInUser.id)
+        .maybeSingle();
+
+      if (profileError) return setMsg(profileError.message);
+
+      if (profile?.role === "dealer") {
+        router.push("/dealer/account");
+        return;
+      }
+
+      if (profile?.role === "buyer") {
+        router.push("/buyer/requests");
+        return;
+      }
+    }
+
     router.push("/onboarding");
   }
 
