@@ -20,6 +20,7 @@ export default function Onboarding() {
       id: user.id,
       role,
       display_name: name || null,
+      email: user.email ?? null,
     });
 
     if (error) return setMsg(error.message);

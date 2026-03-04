@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { dealer_id, display_name } = body;
+  const { dealer_id, display_name, email } = body;
 
   if (!dealer_id || !display_name) {
     return NextResponse.json(
@@ -26,6 +26,7 @@ export async function POST(req: NextRequest) {
     id: dealer_id,
     role: "dealer",
     display_name,
+    email: email ?? null,
   });
 
   if (error) {
