@@ -529,8 +529,11 @@ export default function DealerOfferPage() {
             Buyer wants: {req.desired_models} {(req.year_min || req.year_max) ? `(${req.year_min && req.year_max ? `${req.year_min}–${req.year_max}` : `${req.year_min ?? req.year_max}`})` : `(${req.condition})`}
           </div>
           <div className="text-sm">
-            ZIP {req.zip} • {req.radius_miles} mi • Credit: {req.credit_tier} • Term:{" "}
-            {req.term_months} • Down: ${req.down_payment}
+            ZIP {req.zip} • {req.radius_miles} mi • Price:{" "}
+            {req.min_price != null || req.max_price != null
+              ? ` $${req.min_price ?? "0"} - $${req.max_price ?? "0"}`
+              : "Any"}{" "}
+            • Credit: {req.credit_tier} • Term: {req.term_months} • Down: ${req.down_payment}
           </div>
           {req.notes && <div className="text-sm">Notes: {req.notes}</div>}
         </div>
