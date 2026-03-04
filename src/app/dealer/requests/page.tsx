@@ -8,8 +8,16 @@ type BuyerRequest = {
   id: string;
   zip: string;
   radius_miles: number;
-  desired_models: string;
+  make?: string | null;
+  model?: string | null;
+  desired_models?: string;
   condition: "new" | "used" | "either";
+  year_min?: number | null;
+  year_max?: number | null;
+  min_price?: number | null;
+  max_price?: number | null;
+  max_miles?: number | null;
+  payment_method?: string | null;
   credit_tier: "760+" | "720-759" | "680-719" | "620-679" | "<620";
   term_months: number;
   down_payment: number;
@@ -64,7 +72,7 @@ export default function DealerRequestsPage() {
           <div key={r.id} className="border p-4">
             <div className="flex items-center justify-between">
               <div className="font-medium">
-                {r.desired_models} ({r.condition})
+                {r.make || r.desired_models}{r.model ? ` ${r.model}` : ''} {r.condition === 'new' && (r.year_min || r.year_max) ? `(${r.year_min && r.year_max ? `${r.year_min}–${r.year_max}` : `${r.year_min ?? r.year_max}`})` : `(${r.condition})`}
               </div>
               <Link
                 className="border px-3 py-1"
@@ -75,9 +83,12 @@ export default function DealerRequestsPage() {
             </div>
 
             <div className="text-sm mt-2">
-              ZIP {r.zip} • {r.radius_miles} mi • Credit: {r.credit_tier} • Term:{" "}
-              {r.term_months} • Down: ${r.down_payment}
+              ZIP {r.zip} • {r.radius_miles} mi • Price: {r.min_price != null || r.max_price != null ? ` $${r.min_price ?? '0'} - $${r.max_price ?? '0'}` : 'Any'}
             </div>
+            <div className="text-sm mt-2">
+              Mileage: {r.max_miles != null ? `${r.max_miles.toLocaleString()} mi` : 'Any'} • Payment: {r.payment_method ?? 'Finance'}
+            </div>
+            <div className="text-sm mt-2">Credit: {r.credit_tier} • Term: {r.term_months} • Down: ${r.down_payment}</div>
 
             {r.notes && (
               <div className="text-sm mt-2">

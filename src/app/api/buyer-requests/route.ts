@@ -1,50 +1,96 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { requireActionsKey } from "@/lib/actionsAuth";
 
 export async function POST(req: NextRequest) {
-  const auth = requireActionsKey(req);
-  if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });
+  try {
+    // Get authorization header
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
 
-  const body = await req.json();
+    const token = authHeader.slice(7);
 
-  // Minimal schema – extend as you like
-  const payload = {
-    buyer_id: body.buyer_id, // UUID
-    zip: body.zip,
-    radius_miles: body.radius_miles ?? 25,
-    desired_models: body.desired_models ?? "",
-    condition: body.condition ?? "either",
-    credit_tier: body.credit_tier ?? "760+",
-    term_months: body.term_months ?? 60,
-    down_payment: body.down_payment ?? 0,
-    notes: body.notes ?? null,
-    status: "open",
-  };
+    // Verify token and get user
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !user) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
 
-  const { data, error } = await supabaseAdmin
-    .from("buyer_requests")
-    .insert(payload)
-    .select("*")
-    .single();
+    const body = await req.json();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    const payload = {
+      buyer_id: user.id,
+      make: body.make ?? "",
+      model: body.model ?? "",
+      payment_method: body.payment_method ?? "finance",
+      condition_types: body.condition_types ?? "used",
+      min_price: body.min_price ?? null,
+      max_price: body.max_price ?? null,
+      year_min: body.year_min ?? 2015,
+      year_max: body.year_max ?? 2027,
+      max_miles: body.max_miles ?? null,
+      zip: body.zip ?? "",
+      radius_miles: body.radius_miles ?? 25,
+      delivery_preference: body.delivery_preference ?? "both",
+      credit_tier: body.credit_tier ?? "good",
+      term_months: body.term_months ?? 60,
+      down_payment: body.down_payment ?? 0,
+      status: "open",
+    };
 
-  return NextResponse.json({ data });
+    const { data, error } = await supabaseAdmin
+      .from("buyer_requests")
+      .insert(payload)
+      .select("*")
+      .single();
+
+    if (error) {
+      return NextResponse.json({ message: error.message }, { status: 400 });
+    }
+
+    return NextResponse.json(data);
+  } catch (err) {
+    return NextResponse.json(
+      { message: err instanceof Error ? err.message : "Internal error" },
+      { status: 500 }
+    );
+  }
 }
 
 export async function GET(req: NextRequest) {
-  const auth = requireActionsKey(req);
-  if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });
+  try {
+    // Get authorization header
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
 
-  const url = new URL(req.url);
-  const buyer_id = url.searchParams.get("buyer_id");
+    const token = authHeader.slice(7);
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !user) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
 
-  let q = supabaseAdmin.from("buyer_requests").select("*").order("created_at", { ascending: false });
-  if (buyer_id) q = q.eq("buyer_id", buyer_id);
+    const url = new URL(req.url);
+    const buyer_id = url.searchParams.get("buyer_id");
 
-  const { data, error } = await q;
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    let q = supabaseAdmin
+      .from("buyer_requests")
+      .select("*")
+      .eq("buyer_id", buyer_id || user.id)
+      .order("created_at", { ascending: false });
 
-  return NextResponse.json({ data });
+    const { data, error } = await q;
+    if (error) {
+      return NextResponse.json({ message: error.message }, { status: 400 });
+    }
+
+    return NextResponse.json({ data });
+  } catch (err) {
+    return NextResponse.json(
+      { message: err instanceof Error ? err.message : "Internal error" },
+      { status: 500 }
+    );
+  }
 }

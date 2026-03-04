@@ -27,8 +27,16 @@ type BuyerRequest = {
   id: string;
   zip: string;
   radius_miles: number;
-  desired_models: string;
+  make?: string | null;
+  model?: string | null;
+  desired_models?: string;
   condition: "new" | "used" | "either";
+  year_min?: number | null;
+  year_max?: number | null;
+  min_price?: number | null;
+  max_price?: number | null;
+  max_miles?: number | null;
+  payment_method?: string | null;
   credit_tier: "760+" | "720-759" | "680-719" | "620-679" | "<620";
   term_months: number;
   down_payment: number;
@@ -518,7 +526,7 @@ export default function DealerOfferPage() {
       {req && (
         <div className="border p-4 space-y-2">
           <div className="font-medium">
-            Buyer wants: {req.desired_models} ({req.condition})
+            Buyer wants: {req.desired_models} {req.condition === 'new' && (req.year_min || req.year_max) ? `(${req.year_min && req.year_max ? `${req.year_min}–${req.year_max}` : `${req.year_min ?? req.year_max}`})` : `(${req.condition})`}
           </div>
           <div className="text-sm">
             ZIP {req.zip} • {req.radius_miles} mi • Credit: {req.credit_tier} • Term:{" "}

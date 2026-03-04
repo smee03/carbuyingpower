@@ -1,18 +1,27 @@
 "use client";
 
+import UserAccount from "@/components/UserAccount";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 
 type BuyerRequest = {
   id: string;
-  desired_models: string;
-  condition: string;
+  make: string;
+  model: string;
+  condition_types: string;
+  min_price?: number | null;
+  max_price?: number | null;
+  payment_method?: string | null;
+  year_min: number;
+  year_max: number;
   zip: string;
   radius_miles: number;
+  max_miles?: number | null;
   credit_tier: string;
   term_months: number;
   down_payment: number;
+  delivery_preference: string;
   status: string;
   created_at: string;
 };
@@ -61,24 +70,28 @@ export default function BuyerRequestsPage() {
     <main className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-6xl mx-auto space-y-8">
 
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">
-              Buyer Dashboard
-            </h1>
-            <p className="text-sm text-gray-500 mt-1">
-              Manage your vehicle requests and compare dealer offers.
-            </p>
-          </div>
+{/* Header */}
+<div className="flex items-start justify-between">
 
-          <Link
-            href="/buyer/new"
-            className="bg-black text-white px-5 py-2 rounded-xl hover:opacity-90 transition"
-          >
-            + New Request
-          </Link>
-        </div>
+  {/* Left side */}
+  <div>
+    <h1 className="text-3xl font-bold tracking-tight">
+      Buyer Dashboard
+    </h1>
+
+    <p className="text-sm text-gray-500 mt-1">
+      Manage your vehicle requests and compare dealer offers.
+    </p>
+
+    <Link
+      href="/buyer/new"
+      className="inline-block mt-4 bg-black text-white px-5 py-2 rounded-xl hover:opacity-90 transition"
+    >
+      + New Request
+    </Link>
+  </div>
+
+</div>
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-6">
@@ -125,7 +138,7 @@ function RequestCard({ request }: { request: BuyerRequest }) {
       
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">
-          {request.desired_models}
+          {request.make} {request.model} {request.year_min && request.year_max ? `(${request.year_min}–${request.year_max})` : ''}
         </h2>
         <StatusBadge status={request.status} />
       </div>
@@ -135,11 +148,24 @@ function RequestCard({ request }: { request: BuyerRequest }) {
           ZIP {request.zip} • {request.radius_miles} mi
         </div>
         <div>
-          Credit: {request.credit_tier} • Term: {request.term_months} mo
+          Price: {request.min_price != null || request.max_price != null ? ` $${request.min_price ?? '0'} - $${request.max_price ?? '0'}` : 'Any'}
         </div>
         <div>
-          Down: ${request.down_payment}
+          Mileage: {request.max_miles != null ? `${request.max_miles.toLocaleString()} mi` : 'Any'} • Delivery: {request.delivery_preference}
         </div>
+        <div>
+          Payment: {request.payment_method === "cash" ? "Cash" : "Finance"}
+        </div>
+        {request.payment_method !== "cash" && (
+          <>
+            <div>
+              Credit: {request.credit_tier} • Term: {request.term_months} mo
+            </div>
+            <div>
+              Down: ${request.down_payment}
+            </div>
+          </>
+        )}
       </div>
 
       <div className="pt-2">
