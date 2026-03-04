@@ -14,7 +14,9 @@ export async function POST(req: NextRequest) {
     // Verify token and get user
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
     if (authError || !user) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+      // Log for debugging in Vercel logs
+      console.error("supabase auth failure", { authError: authError?.message, tokenPreview: token?.slice?.(0, 8) });
+      return NextResponse.json({ message: "Unauthorized", detail: authError?.message ?? "no user" }, { status: 401 });
     }
 
     const body = await req.json();
@@ -69,7 +71,8 @@ export async function GET(req: NextRequest) {
     const token = authHeader.slice(7);
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
     if (authError || !user) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+      console.error("supabase auth failure (GET)", { authError: authError?.message, tokenPreview: token?.slice?.(0, 8) });
+      return NextResponse.json({ message: "Unauthorized", detail: authError?.message ?? "no user" }, { status: 401 });
     }
 
     const url = new URL(req.url);
