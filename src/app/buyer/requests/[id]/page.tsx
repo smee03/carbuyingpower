@@ -68,7 +68,8 @@ type DealerOffer = {
   assumed_down_payment: number | null;
   monthly_payment_est: number | null;
 
-  status: "submitted" | "withdrawn" | "accepted" | "expired";
+  status: "submitted" | "withdrawn" | "accepted" | "expired" | "declined";
+  decline_reason?: string | null;
   created_at: string;
 };
 
@@ -135,7 +136,10 @@ export default function BuyerRequestDetailPage() {
   const [msg, setMsg] = useState("");
   const [req, setReq] = useState<BuyerRequest | null>(null);
   const [offers, setOffers] = useState<DealerOffer[]>([]);
+  const [dealerNames, setDealerNames] = useState<Record<string, string>>({});
   const [sortKey, setSortKey] = useState<SortKey>("otd");
+  const [decisionNotes, setDecisionNotes] = useState<Record<string, string>>({});
+  const [decidingOfferId, setDecidingOfferId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -195,7 +199,6 @@ export default function BuyerRequestDetailPage() {
         .from("dealer_offers")
         .select("*")
         .eq("request_id", id)
-        .eq("status", "submitted")
         .order("created_at", { ascending: false });
 
       if (offersRes.error) {
@@ -205,7 +208,25 @@ export default function BuyerRequestDetailPage() {
         return;
       }
 
-      setOffers((offersRes.data || []) as DealerOffer[]);
+      const loadedOffers = (offersRes.data || []) as DealerOffer[];
+      setOffers(loadedOffers);
+
+      const dealerIds = Array.from(new Set(loadedOffers.map((o) => o.dealer_id).filter(Boolean)));
+      if (dealerIds.length > 0) {
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("id, display_name")
+          .in("id", dealerIds);
+
+        if (!profileError) {
+          const map: Record<string, string> = {};
+          for (const p of profileData || []) {
+            const profile = p as { id: string; display_name: string | null };
+            map[profile.id] = profile.display_name || "Dealer";
+          }
+          setDealerNames(map);
+        }
+      }
       setLoading(false);
     })();
   }, [id]);
@@ -227,6 +248,69 @@ export default function BuyerRequestDetailPage() {
 
     return copy;
   }, [offers, sortKey]);
+
+  function offerStatusLabel(status: DealerOffer["status"]) {
+    if (status === "expired") return "declined";
+    return status;
+  }
+
+  async function handleOfferDecision(offer: DealerOffer, decision: "accepted" | "declined") {
+    if (!req) return;
+
+    const note = (decisionNotes[offer.id] || "").trim();
+    if (decision === "declined" && !note) {
+      setMsg("Please provide a decline reason before declining.");
+      return;
+    }
+
+    setMsg("");
+    setDecidingOfferId(offer.id);
+
+    if (decision === "accepted") {
+      const { error: offerError } = await supabase
+        .from("dealer_offers")
+        .update({ status: "accepted" })
+        .eq("id", offer.id);
+
+      if (offerError) {
+        setMsg(offerError.message);
+        setDecidingOfferId(null);
+        return;
+      }
+
+      await supabase.from("buyer_requests").update({ status: "accepted" }).eq("id", req.id);
+
+      setOffers((prev) => prev.map((o) => (o.id === offer.id ? { ...o, status: "accepted" } : o)));
+      setReq({ ...req, status: "accepted" });
+      setDecidingOfferId(null);
+      return;
+    }
+
+    const declineWithReason = await supabase
+      .from("dealer_offers")
+      .update({ status: "expired", decline_reason: note })
+      .eq("id", offer.id);
+
+    if (declineWithReason.error) {
+      const declineFallback = await supabase
+        .from("dealer_offers")
+        .update({ status: "expired" })
+        .eq("id", offer.id);
+
+      if (declineFallback.error) {
+        setMsg(declineFallback.error.message);
+        setDecidingOfferId(null);
+        return;
+      }
+    }
+
+    setOffers((prev) =>
+      prev.map((o) =>
+        o.id === offer.id ? { ...o, status: "expired", decline_reason: note } : o
+      )
+    );
+    setDecidingOfferId(null);
+  }
 
   return (
     <main className="p-6 max-w-4xl mx-auto space-y-4">
@@ -288,10 +372,25 @@ export default function BuyerRequestDetailPage() {
                 <div key={o.id} className="border p-4 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="font-medium">
-                      Offer • OTD <span className="font-semibold">{money(o.otd_total)}</span>
+                      Offer from {dealerNames[o.dealer_id] || "Dealer"} •{" "}
+                      <span className="font-normal">OTD</span>{" "}
+                      <span className="font-semibold">{money(o.otd_total)}</span>
                     </div>
-                    <div className="text-xs opacity-70">
-                      {new Date(o.created_at).toLocaleString()}
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-xs border px-2 py-1 rounded ${
+                          o.status === "accepted"
+                            ? "bg-green-50 border-green-200 text-green-700"
+                            : o.status === "expired" || o.status === "declined"
+                            ? "bg-red-50 border-red-200 text-red-700"
+                            : "bg-gray-50 border-gray-200 text-gray-700"
+                        }`}
+                      >
+                        {offerStatusLabel(o.status)}
+                      </span>
+                      <div className="text-xs opacity-70">
+                        {new Date(o.created_at).toLocaleString()}
+                      </div>
                     </div>
                   </div>
 
@@ -359,6 +458,24 @@ export default function BuyerRequestDetailPage() {
                         <span>Fees subtotal</span>
                         <span className="text-right">{money(feesTotal)}</span>
                       </div>
+                      <div className="grid grid-cols-2 px-3 py-2 border-t text-black">
+                        <span>APR</span>
+                        <span className="text-right">
+                          {o.assumed_apr != null ? `${o.assumed_apr}%` : "—"}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 px-3 py-2 border-t text-black">
+                        <span>Term</span>
+                        <span className="text-right">
+                          {o.assumed_term_months != null ? `${o.assumed_term_months} mo` : "—"}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 px-3 py-2 border-t text-black">
+                        <span>Down payment</span>
+                        <span className="text-right">
+                          {o.assumed_down_payment != null ? money(o.assumed_down_payment) : "—"}
+                        </span>
+                      </div>
                       <div className="grid grid-cols-2 px-3 py-2 border-t bg-white font-semibold text-black">
                         <span>Out-the-door total</span>
                         <span className="text-right">{money(o.otd_total)}</span>
@@ -369,14 +486,47 @@ export default function BuyerRequestDetailPage() {
                           {o.monthly_payment_est ? `${money(o.monthly_payment_est)}/mo` : "—"}
                         </span>
                       </div>
-                      {o.assumed_apr != null && (
-                        <div className="px-3 py-2 border-t text-xs font-semibold text-black">
-                          APR {o.assumed_apr}% • {o.assumed_term_months ?? "?"} mo • Down $
-                          {o.assumed_down_payment ?? 0}
-                        </div>
-                      )}
                     </div>
                   </div>
+
+                  {o.status === "submitted" && (
+                    <div className="border rounded-lg p-3 space-y-3">
+                      <label className="block text-sm font-medium text-black">
+                        Decline reason (required only if declining)
+                      </label>
+                      <textarea
+                        value={decisionNotes[o.id] || ""}
+                        onChange={(e) =>
+                          setDecisionNotes((prev) => ({ ...prev, [o.id]: e.target.value }))
+                        }
+                        className="w-full border rounded p-2 text-sm text-black"
+                        rows={3}
+                        placeholder="Example: price is above budget, fees too high, trim mismatch..."
+                      />
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => handleOfferDecision(o, "accepted")}
+                          disabled={decidingOfferId === o.id}
+                          className="bg-black text-white px-4 py-2 rounded disabled:opacity-50"
+                        >
+                          Accept Offer
+                        </button>
+                        <button
+                          onClick={() => handleOfferDecision(o, "declined")}
+                          disabled={decidingOfferId === o.id}
+                          className="border border-red-300 text-red-700 px-4 py-2 rounded disabled:opacity-50"
+                        >
+                          Decline Offer
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {(o.status === "expired" || o.status === "declined") && o.decline_reason && (
+                    <div className="border rounded-lg p-3 text-sm text-black">
+                      <span className="font-semibold">Decline reason:</span> {o.decline_reason}
+                    </div>
+                  )}
                 </div>
               );
             })}

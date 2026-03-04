@@ -63,7 +63,7 @@ export default function BuyerRequestsPage() {
             .from("dealer_offers")
             .select("id", { count: "exact", head: true })
             .in("request_id", requestIds)
-            .in("status", ["submitted", "accepted"]);
+            .in("status", ["submitted", "accepted", "expired", "declined"]);
 
           if (offerError) {
             setMsg(offerError.message);

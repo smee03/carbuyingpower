@@ -10,7 +10,7 @@ type DealerOffer = {
   selling_price: number;
   otd_total: number;
   monthly_payment_est: number | null;
-  status: "submitted" | "withdrawn" | "accepted" | "expired";
+  status: "submitted" | "withdrawn" | "accepted" | "expired" | "declined";
   created_at: string;
 };
 
@@ -29,6 +29,11 @@ export default function DealerOffersPage() {
   const [msg, setMsg] = useState("");
   const [offers, setOffers] = useState<DealerOffer[]>([]);
   const [requestsById, setRequestsById] = useState<Record<string, BuyerRequestSummary>>({});
+
+  function statusLabel(status: DealerOffer["status"]) {
+    if (status === "expired") return "declined";
+    return status;
+  }
 
   useEffect(() => {
     (async () => {
@@ -124,8 +129,16 @@ export default function DealerOffersPage() {
                 <div className="font-medium">
                   {title} {years}
                 </div>
-                <span className="text-xs border px-2 py-1 rounded">
-                  {offer.status}
+                <span
+                  className={`text-xs border px-2 py-1 rounded ${
+                    offer.status === "accepted"
+                      ? "bg-green-50 border-green-200 text-green-700"
+                      : offer.status === "expired" || offer.status === "declined"
+                      ? "bg-red-50 border-red-200 text-red-700"
+                      : "bg-gray-50 border-gray-200 text-gray-700"
+                  }`}
+                >
+                  {statusLabel(offer.status)}
                 </span>
               </div>
 
