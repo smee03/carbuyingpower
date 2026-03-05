@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
 type Profile = {
@@ -12,6 +13,7 @@ type Profile = {
 export default function UserAccount() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     async function load() {
@@ -38,6 +40,10 @@ export default function UserAccount() {
 
   if (!profile) return null;
 
+  const normalizedRole = profile.role?.trim().toLowerCase();
+  const isDealerContext = pathname?.startsWith("/dealer");
+  const showDealerAccount = normalizedRole === "dealer" || isDealerContext;
+
   return (
     <div className="relative">
       {/* Button */}
@@ -53,7 +59,7 @@ export default function UserAccount() {
       {open && (
         <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-md p-3 space-y-2 text-sm">
 
-          {profile.role === "dealer" ? (
+          {showDealerAccount ? (
             <Link href="/dealer/account" className="block text-gray-700 hover:underline">
               Dealer Account
             </Link>

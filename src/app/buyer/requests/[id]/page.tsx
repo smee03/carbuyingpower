@@ -141,6 +141,7 @@ export default function BuyerRequestDetailPage() {
   const [sortKey, setSortKey] = useState<SortKey>("otd");
   const [decisionNotes, setDecisionNotes] = useState<Record<string, string>>({});
   const [decidingOfferId, setDecidingOfferId] = useState<string | null>(null);
+  const [expandedOfferId, setExpandedOfferId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -367,7 +368,11 @@ export default function BuyerRequestDetailPage() {
 
               return (
                 <div key={o.id} className="border p-4 space-y-2">
-                  <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedOfferId((prev) => (prev === o.id ? null : o.id))}
+                    className="w-full flex items-center justify-between text-left"
+                  >
                     <div className="font-medium">
                       Offer from {dealerNames[o.dealer_id] || "Dealer"} •{" "}
                       <span className="font-normal">OTD</span>{" "}
@@ -388,8 +393,14 @@ export default function BuyerRequestDetailPage() {
                       <div className="text-xs opacity-70">
                         {new Date(o.created_at).toLocaleString()}
                       </div>
+                      <span className="text-xs text-black">
+                        {expandedOfferId === o.id ? "Hide" : "View"}
+                      </span>
                     </div>
-                  </div>
+                  </button>
+
+                  {expandedOfferId !== o.id ? null : (
+                    <>
 
                   {/* Integrity warnings */}
                   {warnings.length > 0 && (
@@ -523,6 +534,8 @@ export default function BuyerRequestDetailPage() {
                     <div className="border rounded-lg p-3 text-sm text-black">
                       <span className="font-semibold">Decline reason:</span> {o.decline_reason}
                     </div>
+                  )}
+                    </>
                   )}
                 </div>
               );
