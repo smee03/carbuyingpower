@@ -31,10 +31,11 @@ async function sendDealAcceptedEmails(args: {
   dealerName: string;
   requestTitle: string;
   otdTotal: number;
+  appUrl: string;
 }) {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://carbuyingpower.vercel.app";
+  const appUrl = args.appUrl;
 
   if (!apiKey || !from) return { sent: false, reason: "email_not_configured" };
 
@@ -191,6 +192,7 @@ export async function POST(
           [buyerRequest.make, buyerRequest.model].filter(Boolean).join(" ").trim() ||
           buyerRequest.desired_models ||
           "vehicle request";
+        const appUrl = process.env.APP_URL || new URL(req.url).origin;
 
         await sendDealAcceptedEmails({
           buyerEmail: buyerProfile.email,
@@ -199,6 +201,7 @@ export async function POST(
           dealerName: dealerProfile.displayName,
           requestTitle,
           otdTotal: Number(offer.otd_total || 0),
+          appUrl,
         });
       }
 
