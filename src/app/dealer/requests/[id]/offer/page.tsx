@@ -1,28 +1,15 @@
 "use client";
-/*
-  Dealer Offer Page (MVP)
-
-  Route:
-    /dealer/requests/[id]/offer
-
-  Goal:
-    Let a dealer respond to a buyer request with an itemized OTD offer.
-
-  Key ideas:
-    - OTD is computed, not typed (prevents "trust me bro" totals)
-    - Add-ons are itemized (forces transparency)
-    - Validation is client-side for now (we can move server-side later)
-*/
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
-/*
-  BuyerRequest type mirrors buyer_requests table.
-  We use it to display what the buyer wants + initialize finance assumptions.
-*/
 type BuyerRequest = {
   id: string;
   zip: string;
@@ -44,429 +31,171 @@ type BuyerRequest = {
   status: "open" | "paused" | "accepted" | "closed";
 };
 
-/*
-  Add-ons are stored as JSONB in Postgres in dealer_offers.addons.
-  Each row is { name, amount }.
-*/
 type Addon = { name: string; amount: number };
 
-/*
-  asInt()
-  Converts input values to safe integers so we avoid NaN or weird parsing behavior
-  from HTML input fields.
-*/
 function asInt(v: unknown) {
   const n = typeof v === "number" ? v : parseInt(String(v || "0"), 10);
   return Number.isFinite(n) ? n : 0;
 }
 
-/*
-  sumAddons()
-  Sums the dealer add-ons into a single number for display + OTD calculation.
-*/
 function sumAddons(addons: Addon[]) {
-  return addons.reduce(
-    (acc, a) => acc + (Number.isFinite(a.amount) ? a.amount : 0),
-    0
-  );
+  return addons.reduce((acc, a) => acc + (Number.isFinite(a.amount) ? a.amount : 0), 0);
 }
 
-/*
-  calcOtdTotal()
-  The real heart of the app: a consistent, comparable OTD formula.
-
-  OTD = selling
-        - discount
-        - rebates
-        + add-ons
-        + doc fee
-        + tax
-        + title/reg
-        + other fees
-*/
 function calcOtdTotal(args: {
-  sellingPrice: number;
-  dealerDiscount: number;
-  rebates: number;
-  addonsTotal: number;
-  docFee: number;
-  tax: number;
-  titleReg: number;
-  otherFees: number;
+  sellingPrice: number; dealerDiscount: number; rebates: number;
+  addonsTotal: number; docFee: number; tax: number; titleReg: number; otherFees: number;
 }) {
-  const {
-    sellingPrice,
-    dealerDiscount,
-    rebates,
-    addonsTotal,
-    docFee,
-    tax,
-    titleReg,
-    otherFees,
-  } = args;
-
-  return (
-    (sellingPrice || 0) -
-    (dealerDiscount || 0) -
-    (rebates || 0) +
-    (addonsTotal || 0) +
-    (docFee || 0) +
-    (tax || 0) +
-    (titleReg || 0) +
-    (otherFees || 0)
-  );
+  const { sellingPrice, dealerDiscount, rebates, addonsTotal, docFee, tax, titleReg, otherFees } = args;
+  return (sellingPrice || 0) - (dealerDiscount || 0) - (rebates || 0) + (addonsTotal || 0) +
+    (docFee || 0) + (tax || 0) + (titleReg || 0) + (otherFees || 0);
 }
 
-/*
-  calcMonthlyPayment()
-  Simple amortization formula for estimated monthly payment.
-  This is NOT a finance contract: it’s a comparison tool.
-*/
 function calcMonthlyPayment(principal: number, aprPct: number, termMonths: number) {
-  if (!principal || principal <= 0) return 0;
-  if (!termMonths || termMonths <= 0) return 0;
-
-  // If APR is 0, treat as a simple division
+  if (!principal || principal <= 0 || !termMonths || termMonths <= 0) return 0;
   if (!aprPct || aprPct <= 0) return Math.round(principal / termMonths);
-
   const r = aprPct / 100 / 12;
-  const n = termMonths;
-  const payment = (principal * r) / (1 - Math.pow(1 + r, -n));
-  return Math.round(payment);
+  return Math.round((principal * r) / (1 - Math.pow(1 + r, -termMonths)));
 }
 
-/*
-  validateOffer()
-  Client-side guardrails.
-
-  This blocks submission if:
-    - No VIN/Stock#/Trim provided
-    - Selling price <= 0
-    - Negative fees
-    - Add-ons are malformed (blank row, name without amount, amount without name)
-    - OTD calculation ends up <= 0
-    - APR/term are out of sane bounds
-
-  It also generates warnings (non-blocking), like "tax looks too low".
-*/
 function validateOffer(input: {
-  vin: string;
-  stockNumber: string;
-  trim: string;
-
-  sellingPrice: number;
-  dealerDiscount: number;
-  rebates: number;
-
-  addons: Addon[];
-
-  docFee: number;
-  tax: number;
-  titleReg: number;
-  otherFees: number;
-
-  assumedApr: number;
-  assumedTerm: number;
-  assumedDown: number;
-
-  otdTotal: number;
+  vin: string; stockNumber: string; trim: string;
+  sellingPrice: number; dealerDiscount: number; rebates: number;
+  addons: Addon[]; docFee: number; tax: number; titleReg: number; otherFees: number;
+  assumedApr: number; assumedTerm: number; assumedDown: number; otdTotal: number;
 }) {
   const errors: string[] = [];
   const warnings: string[] = [];
+  const { vin, stockNumber, trim, sellingPrice, dealerDiscount, rebates, addons,
+    docFee, tax, titleReg, otherFees, assumedApr, assumedTerm, assumedDown, otdTotal } = input;
 
-  const {
-    vin,
-    stockNumber,
-    trim,
-    sellingPrice,
-    dealerDiscount,
-    rebates,
-    addons,
-    docFee,
-    tax,
-    titleReg,
-    otherFees,
-    assumedApr,
-    assumedTerm,
-    assumedDown,
-    otdTotal,
-  } = input;
-
-  // Require at least one vehicle identifier (so buyers trust the quote is tied to something real)
-  if (!vin.trim() && !stockNumber.trim() && !trim.trim()) {
+  if (!vin.trim() && !stockNumber.trim() && !trim.trim())
     errors.push("Provide at least one identifier: VIN, Stock #, or Trim.");
-  }
-
-  // Selling price must be > 0 (otherwise the quote is meaningless)
   if (sellingPrice <= 0) errors.push("Selling price must be greater than 0.");
 
-  // Ensure money fields aren't negative
-  const moneyFields = [
-    { name: "Dealer discount", v: dealerDiscount },
-    { name: "Rebates", v: rebates },
-    { name: "Doc fee", v: docFee },
-    { name: "Tax", v: tax },
-    { name: "Title/Reg", v: titleReg },
-    { name: "Other fees", v: otherFees },
-    { name: "Down payment", v: assumedDown },
-  ];
-  for (const f of moneyFields) {
-    if (f.v < 0) errors.push(`${f.name} cannot be negative.`);
+  for (const [f, v] of [["Dealer discount", dealerDiscount], ["Rebates", rebates],
+    ["Doc fee", docFee], ["Tax", tax], ["Title/Reg", titleReg],
+    ["Other fees", otherFees], ["Down payment", assumedDown]] as [string, number][]) {
+    if (v < 0) errors.push(`${f} cannot be negative.`);
   }
 
-  // Add-ons validation: force clean itemization
   for (const [i, a] of addons.entries()) {
     const name = (a.name || "").trim();
     const amt = asInt(a.amount);
-
-    if (!name && amt > 0)
-      errors.push(`Add-on #${i + 1} has an amount but no name.`);
-
-    if (name && amt <= 0)
-      errors.push(`Add-on "${name}" must have an amount > 0.`);
-
-    if (!name && amt === 0)
-      errors.push(`Remove blank add-on row #${i + 1} (name and amount are empty).`);
+    if (!name && amt > 0) errors.push(`Add-on #${i + 1} has an amount but no name.`);
+    if (name && amt <= 0) errors.push(`Add-on "${name}" must have an amount > 0.`);
+    if (!name && amt === 0) errors.push(`Remove blank add-on row #${i + 1}.`);
   }
 
-  // OTD sanity check (since it's computed, this usually catches weird inputs)
   if (otdTotal <= 0) errors.push("OTD total must be greater than 0. Check your numbers.");
-
-  // Finance assumptions sanity (still helpful for comparison)
   if (assumedApr < 0 || assumedApr > 25) errors.push("APR must be between 0% and 25%.");
   if (assumedTerm <= 0 || assumedTerm > 120) errors.push("Term months must be between 1 and 120.");
 
-  // Warnings (do not block submit)
-  if (tax <= 25) warnings.push("Tax looks very low. Confirm this is full sales tax, not a placeholder.");
-  if (docFee > 800) warnings.push("Doc fee looks high. Buyers may expect justification or a breakdown.");
-  if (titleReg > 1500) warnings.push("Title/registration looks high. Confirm DMV/registration estimate is correct.");
+  if (tax <= 25) warnings.push("Tax looks very low. Confirm this is full sales tax.");
+  if (docFee > 800) warnings.push("Doc fee looks high. Buyers may expect justification.");
+  if (titleReg > 1500) warnings.push("Title/registration looks high. Confirm DMV estimate.");
 
   return { errors, warnings };
 }
 
+function FieldGroup({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
+  return (
+    <div className={cn("space-y-1.5", className)}>
+      <Label>{label}</Label>
+      {children}
+    </div>
+  );
+}
+
 export default function DealerOfferPage() {
-  /*
-    requestId is the buyer request UUID from the URL.
-    Example: /dealer/requests/<uuid>/offer
-  */
   const params = useParams<{ id: string }>();
   const requestId = useMemo(() => params.id, [params]);
   const router = useRouter();
 
-  /*
-    Page state:
-      - loadingReq: while we fetch buyer request details
-      - msg: generic message (usually supabase errors)
-      - errors/warnings: validation output
-  */
   const [loadingReq, setLoadingReq] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
-
-  // buyer request record being responded to
   const [req, setReq] = useState<BuyerRequest | null>(null);
 
-  /*
-    Form input state:
-    Vehicle identity fields
-  */
   const [vin, setVin] = useState("");
   const [stockNumber, setStockNumber] = useState("");
   const [trim, setTrim] = useState("");
-
-  /*
-    MSRP is optional, so we use "" to avoid showing "0" on first render.
-    - If empty: we store null in DB
-    - If number typed: store the number
-  */
   const [msrp, setMsrp] = useState<number | "">("");
-
-  /*
-    Core pricing fields (start at 0 for simplicity)
-    Later you could make these "" too for cleaner UX.
-  */
   const [sellingPrice, setSellingPrice] = useState<number>(0);
   const [dealerDiscount, setDealerDiscount] = useState<number>(0);
   const [rebates, setRebates] = useState<number>(0);
-
-  // Add-ons (itemized)
   const [addons, setAddons] = useState<Addon[]>([]);
-
-  // Fees and taxes
   const [docFee, setDocFee] = useState<number>(0);
   const [tax, setTax] = useState<number>(0);
   const [titleReg, setTitleReg] = useState<number>(0);
   const [otherFees, setOtherFees] = useState<number>(0);
-
-  /*
-    Finance assumptions:
-    We initialize term + down payment from the buyer request after we load it.
-  */
   const [assumedApr, setAssumedApr] = useState<number>(0);
   const [assumedTerm, setAssumedTerm] = useState<number>(60);
   const [assumedDown, setAssumedDown] = useState<number>(0);
 
-  /*
-    Load buyer request details from Supabase.
-    This gives dealer context and sets default assumptions.
-  */
   useEffect(() => {
     (async () => {
       setMsg("");
       setLoadingReq(true);
-
-      // Require a signed-in user (dealer)
       const { data: auth } = await supabase.auth.getUser();
-      if (!auth.user) {
-        setMsg("Not signed in. Go to /auth");
-        setLoadingReq(false);
-        return;
-      }
+      if (!auth.user) { setMsg("Not signed in. Go to /auth"); setLoadingReq(false); return; }
 
-      // Fetch request record
-      const { data, error } = await supabase
-        .from("buyer_requests")
-        .select("*")
-        .eq("id", requestId)
-        .single();
-
-      if (error) {
-        setMsg(error.message);
-        setReq(null);
-        setLoadingReq(false);
-        return;
-      }
+      const { data, error } = await supabase.from("buyer_requests").select("*").eq("id", requestId).single();
+      if (error) { setMsg(error.message); setReq(null); setLoadingReq(false); return; }
 
       setReq(data as BuyerRequest);
-
-      // Initialize finance assumptions based on buyer request preferences
       setAssumedTerm((data as any).term_months ?? 60);
       setAssumedDown((data as any).down_payment ?? 0);
-
       setLoadingReq(false);
     })();
   }, [requestId]);
 
-  /*
-    Derived values:
-      - addonsTotal = sum of add-ons
-      - otdTotal = computed OTD from all pricing fields
-      - principal = otd minus down payment
-      - monthlyPaymentEst = estimated monthly payment
-  */
   const addonsTotal = useMemo(() => sumAddons(addons), [addons]);
+  const otdTotal = useMemo(() => calcOtdTotal({ sellingPrice, dealerDiscount, rebates, addonsTotal, docFee, tax, titleReg, otherFees }), [sellingPrice, dealerDiscount, rebates, addonsTotal, docFee, tax, titleReg, otherFees]);
+  const principal = useMemo(() => Math.max(otdTotal - (assumedDown || 0), 0), [otdTotal, assumedDown]);
+  const monthlyPaymentEst = useMemo(() => calcMonthlyPayment(principal, assumedApr || 0, assumedTerm || 60), [principal, assumedApr, assumedTerm]);
 
-  const otdTotal = useMemo(
-    () =>
-      calcOtdTotal({
-        sellingPrice,
-        dealerDiscount,
-        rebates,
-        addonsTotal,
-        docFee,
-        tax,
-        titleReg,
-        otherFees,
-      }),
-    [sellingPrice, dealerDiscount, rebates, addonsTotal, docFee, tax, titleReg, otherFees]
-  );
-
-  const principal = useMemo(
-    () => Math.max(otdTotal - (assumedDown || 0), 0),
-    [otdTotal, assumedDown]
-  );
-
-  const monthlyPaymentEst = useMemo(
-    () => calcMonthlyPayment(principal, assumedApr || 0, assumedTerm || 60),
-    [principal, assumedApr, assumedTerm]
-  );
-
-  /*
-    Helper to update an add-on row
-  */
   function updateAddon(idx: number, patch: Partial<Addon>) {
     setAddons((prev) => prev.map((a, i) => (i === idx ? { ...a, ...patch } : a)));
   }
-
-  /*
-    Helper to remove an add-on row
-  */
   function removeAddon(idx: number) {
     setAddons((prev) => prev.filter((_, i) => i !== idx));
   }
 
-  /*
-    Submit offer:
-      - validate inputs
-      - insert into dealer_offers
-      - redirect dealer back to open requests
-  */
   async function submitOffer() {
     setMsg("");
     setErrors([]);
     setWarnings([]);
+    setSubmitting(true);
 
     const { data: auth } = await supabase.auth.getUser();
     const user = auth.user;
-    if (!user) return setMsg("Not signed in. Go to /auth");
-    if (!req) return setMsg("Request not loaded.");
+    if (!user) { setMsg("Not signed in. Go to /auth"); setSubmitting(false); return; }
+    if (!req) { setMsg("Request not loaded."); setSubmitting(false); return; }
 
-    // Run guardrails
-    const v = validateOffer({
-      vin,
-      stockNumber,
-      trim,
-
-      sellingPrice,
-      dealerDiscount,
-      rebates,
-
-      addons,
-
-      docFee,
-      tax,
-      titleReg,
-      otherFees,
-
-      assumedApr,
-      assumedTerm,
-      assumedDown,
-
-      otdTotal,
-    });
-
+    const v = validateOffer({ vin, stockNumber, trim, sellingPrice, dealerDiscount, rebates, addons, docFee, tax, titleReg, otherFees, assumedApr, assumedTerm, assumedDown, otdTotal });
     setErrors(v.errors);
     setWarnings(v.warnings);
+    if (v.errors.length > 0) { setSubmitting(false); return; }
 
-    // Block submission if there are errors
-    if (v.errors.length > 0) return;
-
-    // Insert offer into DB (MVP: direct from client)
-    // Later: move to API route for server-side validation & anti-tamper.
     const { error } = await supabase.from("dealer_offers").insert({
       request_id: requestId,
       dealer_id: user.id,
-
       vin: vin.trim() || null,
       stock_number: stockNumber.trim() || null,
       trim: trim.trim() || null,
-
-      msrp: msrp === "" ? null : msrp, // keep MSRP optional + not forced
-
+      msrp: msrp === "" ? null : msrp,
       selling_price: sellingPrice,
       dealer_discount: dealerDiscount || 0,
       rebates: rebates || 0,
-
-      addons, // jsonb
-
+      addons,
       doc_fee: docFee || 0,
       tax: tax || 0,
       title_registration: titleReg || 0,
       other_fees: otherFees || 0,
-
       otd_total: otdTotal,
-
       assumed_apr: assumedApr || null,
       assumed_credit_tier: req.credit_tier,
       assumed_term_months: assumedTerm || 60,
@@ -474,274 +203,230 @@ export default function DealerOfferPage() {
       monthly_payment_est: monthlyPaymentEst || null,
     });
 
-    if (error) return setMsg(error.message);
-
+    if (error) { setMsg(error.message); setSubmitting(false); return; }
     router.push("/dealer/requests");
   }
 
-  /*
-    UI layout:
-      - top nav (title + back link)
-      - validation errors/warnings
-      - buyer request summary box
-      - dealer offer form sections
-      - computed totals box
-      - submit button
-  */
   return (
-    <main className="p-6 max-w-4xl mx-auto space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Make Offer</h1>
-        <Link className="underline" href="/dealer/requests">
-          Back
-        </Link>
-      </div>
+    <main className="min-h-screen bg-muted/40 p-6">
+      <div className="max-w-3xl mx-auto space-y-6">
 
-      {msg && <p className="text-sm">{msg}</p>}
-
-      {errors.length > 0 && (
-        <div className="border p-4">
-          <div className="font-semibold">Fix these before submitting:</div>
-          <ul className="list-disc ml-6 mt-2 text-sm">
-            {errors.map((e, i) => (
-              <li key={i}>{e}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {warnings.length > 0 && (
-        <div className="border p-4">
-          <div className="font-semibold">Warnings (not blocking):</div>
-          <ul className="list-disc ml-6 mt-2 text-sm">
-            {warnings.map((w, i) => (
-              <li key={i}>{w}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {loadingReq && <p>Loading request…</p>}
-
-      {req && (
-        <div className="border p-4 space-y-2">
-          <div className="font-medium">
-            Buyer wants: {req.desired_models} {(req.year_min || req.year_max) ? `(${req.year_min && req.year_max ? `${req.year_min}–${req.year_max}` : `${req.year_min ?? req.year_max}`})` : `(${req.condition})`}
-          </div>
-          <div className="text-sm">
-            ZIP {req.zip} • {req.radius_miles} mi • Price:{" "}
-            {req.min_price != null || req.max_price != null
-              ? ` $${req.min_price ?? "0"} - $${req.max_price ?? "0"}`
-              : "Any"}{" "}
-            • Credit: {req.credit_tier} • Term: {req.term_months} • Down: ${req.down_payment}
-          </div>
-          {req.notes && <div className="text-sm">Notes: {req.notes}</div>}
-        </div>
-      )}
-
-      <div className="border p-4 space-y-4">
-        <h2 className="font-semibold">Vehicle</h2>
-
-        {/* Vehicle identity fields (at least one required) */}
-        <div className="grid grid-cols-2 gap-3">
-          <input
-            className="border p-2"
-            placeholder="VIN (optional)"
-            value={vin}
-            onChange={(e) => setVin(e.target.value)}
-          />
-          <input
-            className="border p-2"
-            placeholder="Stock # (optional)"
-            value={stockNumber}
-            onChange={(e) => setStockNumber(e.target.value)}
-          />
-          <input
-            className="border p-2"
-            placeholder="Trim (optional)"
-            value={trim}
-            onChange={(e) => setTrim(e.target.value)}
-          />
-
-          {/* MSRP optional; leaving blank stores NULL */}
-          <input
-            className="border p-2"
-            type="number"
-            placeholder="MSRP (optional)"
-            value={msrp}
-            onChange={(e) => setMsrp(e.target.value === "" ? "" : asInt(e.target.value))}
-          />
-        </div>
-
-        <h2 className="font-semibold">Price (before fees)</h2>
-
-        {/* Pricing inputs that impact OTD calculation */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="flex items-center justify-between">
           <div>
-            <label className="text-xs">Selling price</label>
-            <input
-              className="border p-2 w-full"
-              type="number"
-              value={sellingPrice}
-              onChange={(e) => setSellingPrice(asInt(e.target.value))}
-            />
-          </div>
-          <div>
-            <label className="text-xs">Dealer discount</label>
-            <input
-              className="border p-2 w-full"
-              type="number"
-              value={dealerDiscount}
-              onChange={(e) => setDealerDiscount(asInt(e.target.value))}
-            />
-          </div>
-          <div>
-            <label className="text-xs">Rebates</label>
-            <input
-              className="border p-2 w-full"
-              type="number"
-              value={rebates}
-              onChange={(e) => setRebates(asInt(e.target.value))}
-            />
+            <Link href="/dealer/requests" className="text-sm text-muted-foreground hover:text-foreground transition">
+              ← Back to requests
+            </Link>
+            <h1 className="text-2xl font-bold tracking-tight mt-1">Make an Offer</h1>
           </div>
         </div>
 
-        <h2 className="font-semibold">Dealer add-ons (itemized)</h2>
+        {msg && <p className="text-sm text-destructive">{msg}</p>}
 
-        {/* Add-ons list - this is where dealers usually hide nonsense */}
-        <div className="space-y-2">
-          {addons.length === 0 && <p className="text-sm opacity-70">No add-ons added.</p>}
+        {errors.length > 0 && (
+          <Card className="border-destructive/50 bg-destructive/5">
+            <CardContent className="p-4">
+              <p className="text-sm font-semibold text-destructive mb-2">Fix these before submitting:</p>
+              <ul className="list-disc ml-5 space-y-1 text-sm text-destructive">
+                {errors.map((e, i) => <li key={i}>{e}</li>)}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
 
-          {addons.map((a, idx) => (
-            <div key={idx} className="grid grid-cols-12 gap-2 items-center">
-              <input
-                className="border p-2 col-span-7"
-                placeholder="Add-on name (e.g., Tint)"
-                value={a.name}
-                onChange={(e) => updateAddon(idx, { name: e.target.value })}
-              />
-              <input
-                className="border p-2 col-span-4"
-                type="number"
-                placeholder="Amount"
-                value={a.amount}
-                onChange={(e) => updateAddon(idx, { amount: asInt(e.target.value) })}
-              />
-              <button className="border px-2 py-2 col-span-1" onClick={() => removeAddon(idx)}>
-                ✕
-              </button>
+        {warnings.length > 0 && (
+          <Card className="border-amber-300 bg-amber-50">
+            <CardContent className="p-4">
+              <p className="text-sm font-semibold text-amber-800 mb-2">Warnings (won't block submit):</p>
+              <ul className="list-disc ml-5 space-y-1 text-sm text-amber-700">
+                {warnings.map((w, i) => <li key={i}>{w}</li>)}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
+
+        {loadingReq && <p className="text-sm text-muted-foreground">Loading request…</p>}
+
+        {/* Buyer request summary */}
+        {req && (
+          <Card>
+            <CardContent className="p-5">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-2">Buyer wants</p>
+              <p className="font-semibold">
+                {req.desired_models}{" "}
+                {(req.year_min || req.year_max)
+                  ? `(${req.year_min && req.year_max ? `${req.year_min}–${req.year_max}` : `${req.year_min ?? req.year_max}`})`
+                  : `(${req.condition})`}
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                ZIP {req.zip} • {req.radius_miles} mi •{" "}
+                Price: {req.min_price != null || req.max_price != null ? `$${req.min_price ?? "0"} – $${req.max_price ?? "0"}` : "Any"} •{" "}
+                Credit: {req.credit_tier} • Term: {req.term_months} mo • Down: ${req.down_payment.toLocaleString()}
+              </p>
+              {req.notes && <p className="text-sm mt-2 text-muted-foreground">Notes: {req.notes}</p>}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Vehicle identity */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Vehicle</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <FieldGroup label="VIN (optional)">
+                <Input placeholder="1HGCM82633A123456" value={vin} onChange={(e) => setVin(e.target.value)} />
+              </FieldGroup>
+              <FieldGroup label="Stock # (optional)">
+                <Input placeholder="A12345" value={stockNumber} onChange={(e) => setStockNumber(e.target.value)} />
+              </FieldGroup>
+              <FieldGroup label="Trim (optional)">
+                <Input placeholder="e.g. EX-L, SEL, Sport" value={trim} onChange={(e) => setTrim(e.target.value)} />
+              </FieldGroup>
+              <FieldGroup label="MSRP (optional)">
+                <Input type="number" placeholder="32000" value={msrp} onChange={(e) => setMsrp(e.target.value === "" ? "" : asInt(e.target.value))} />
+              </FieldGroup>
             </div>
-          ))}
+          </CardContent>
+        </Card>
 
-          <button
-            className="border px-3 py-2"
-            onClick={() => setAddons((p) => [...p, { name: "", amount: 0 }])}
-          >
-            + Add add-on
-          </button>
+        {/* Pricing */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Pricing</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-3 gap-4">
+              <FieldGroup label="Selling price *">
+                <Input type="number" value={sellingPrice} onChange={(e) => setSellingPrice(asInt(e.target.value))} />
+              </FieldGroup>
+              <FieldGroup label="Dealer discount">
+                <Input type="number" value={dealerDiscount} onChange={(e) => setDealerDiscount(asInt(e.target.value))} />
+              </FieldGroup>
+              <FieldGroup label="Rebates">
+                <Input type="number" value={rebates} onChange={(e) => setRebates(asInt(e.target.value))} />
+              </FieldGroup>
+            </div>
+          </CardContent>
+        </Card>
 
-          <div className="text-sm">
-            Add-ons total: <span className="font-medium">${addonsTotal}</span>
-          </div>
-        </div>
+        {/* Add-ons */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Dealer Add-ons</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {addons.length === 0 && (
+              <p className="text-sm text-muted-foreground">No add-ons. Click below to add one.</p>
+            )}
+            {addons.map((a, idx) => (
+              <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                <Input
+                  className="col-span-7"
+                  placeholder="Add-on name (e.g. Window Tint)"
+                  value={a.name}
+                  onChange={(e) => updateAddon(idx, { name: e.target.value })}
+                />
+                <Input
+                  className="col-span-4"
+                  type="number"
+                  placeholder="Amount"
+                  value={a.amount}
+                  onChange={(e) => updateAddon(idx, { amount: asInt(e.target.value) })}
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="col-span-1 text-muted-foreground hover:text-destructive"
+                  onClick={() => removeAddon(idx)}
+                >
+                  ✕
+                </Button>
+              </div>
+            ))}
+            <div className="flex items-center justify-between pt-1">
+              <Button variant="outline" size="sm" onClick={() => setAddons((p) => [...p, { name: "", amount: 0 }])}>
+                + Add add-on
+              </Button>
+              {addons.length > 0 && (
+                <span className="text-sm text-muted-foreground">
+                  Total: <span className="font-semibold text-foreground">${addonsTotal.toLocaleString()}</span>
+                </span>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
-        <h2 className="font-semibold">Fees / Tax</h2>
+        {/* Fees */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Fees &amp; Tax</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-4 gap-4">
+              <FieldGroup label="Doc fee">
+                <Input type="number" value={docFee} onChange={(e) => setDocFee(asInt(e.target.value))} />
+              </FieldGroup>
+              <FieldGroup label="Sales tax">
+                <Input type="number" value={tax} onChange={(e) => setTax(asInt(e.target.value))} />
+              </FieldGroup>
+              <FieldGroup label="Title / Reg">
+                <Input type="number" value={titleReg} onChange={(e) => setTitleReg(asInt(e.target.value))} />
+              </FieldGroup>
+              <FieldGroup label="Other fees">
+                <Input type="number" value={otherFees} onChange={(e) => setOtherFees(asInt(e.target.value))} />
+              </FieldGroup>
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* Fees that buyers often discover later unless itemized */}
-        <div className="grid grid-cols-4 gap-3">
-          <div>
-            <label className="text-xs">Doc fee</label>
-            <input
-              className="border p-2 w-full"
-              type="number"
-              value={docFee}
-              onChange={(e) => setDocFee(asInt(e.target.value))}
-            />
-          </div>
-          <div>
-            <label className="text-xs">Sales tax</label>
-            <input
-              className="border p-2 w-full"
-              type="number"
-              value={tax}
-              onChange={(e) => setTax(asInt(e.target.value))}
-            />
-          </div>
-          <div>
-            <label className="text-xs">Title/Reg</label>
-            <input
-              className="border p-2 w-full"
-              type="number"
-              value={titleReg}
-              onChange={(e) => setTitleReg(asInt(e.target.value))}
-            />
-          </div>
-          <div>
-            <label className="text-xs">Other fees</label>
-            <input
-              className="border p-2 w-full"
-              type="number"
-              value={otherFees}
-              onChange={(e) => setOtherFees(asInt(e.target.value))}
-            />
-          </div>
-        </div>
+        {/* Finance assumptions */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Finance Assumptions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4">
+              <FieldGroup label="APR %">
+                <Input type="number" step="0.01" value={assumedApr} onChange={(e) => setAssumedApr(parseFloat(e.target.value || "0"))} />
+              </FieldGroup>
+              <FieldGroup label="Term (months)">
+                <Input type="number" value={assumedTerm} onChange={(e) => setAssumedTerm(asInt(e.target.value))} />
+              </FieldGroup>
+              <FieldGroup label="Down payment ($)">
+                <Input type="number" value={assumedDown} onChange={(e) => setAssumedDown(asInt(e.target.value))} />
+              </FieldGroup>
+            </div>
+          </CardContent>
+        </Card>
 
-        <h2 className="font-semibold">Finance assumptions</h2>
+        {/* OTD Summary */}
+        <Card className="bg-muted/50">
+          <CardContent className="p-5">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-3">Computed totals</p>
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Out-the-door</div>
+                <div className="text-2xl font-bold">${otdTotal.toLocaleString()}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Financed amount</div>
+                <div className="text-2xl font-bold">${principal.toLocaleString()}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Est. monthly</div>
+                <div className="text-2xl font-bold">${monthlyPaymentEst.toLocaleString()}/mo</div>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">
+              Payment is a simple amortization estimate — excludes insurance and other costs.
+            </p>
+          </CardContent>
+        </Card>
 
-        {/* Used for monthly payment estimate (comparison only) */}
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <label className="text-xs">APR %</label>
-            <input
-              className="border p-2 w-full"
-              type="number"
-              step="0.01"
-              value={assumedApr}
-              onChange={(e) => setAssumedApr(parseFloat(e.target.value || "0"))}
-            />
-          </div>
-          <div>
-            <label className="text-xs">Term months</label>
-            <input
-              className="border p-2 w-full"
-              type="number"
-              value={assumedTerm}
-              onChange={(e) => setAssumedTerm(asInt(e.target.value))}
-            />
-          </div>
-          <div>
-            <label className="text-xs">Down payment</label>
-            <input
-              className="border p-2 w-full"
-              type="number"
-              value={assumedDown}
-              onChange={(e) => setAssumedDown(asInt(e.target.value))}
-            />
-          </div>
-        </div>
-
-        {/* Computed summary - this is the whole point */}
-        <div className="border p-3 mt-3 space-y-1">
-          <div className="text-sm">
-            OTD total: <span className="font-semibold">${otdTotal}</span>
-          </div>
-          <div className="text-sm">
-            Estimated principal (OTD - down):{" "}
-            <span className="font-semibold">${principal}</span>
-          </div>
-          <div className="text-sm">
-            Estimated monthly payment:{" "}
-            <span className="font-semibold">${monthlyPaymentEst}</span>
-          </div>
-          <p className="text-xs opacity-70">
-            Payment estimate is a simple loan calc; excludes insurance, etc.
-          </p>
-        </div>
-
-        <button className="border px-4 py-2 w-full" onClick={submitOffer}>
-          Submit offer
-        </button>
+        <Button className="w-full" size="lg" onClick={submitOffer} disabled={submitting}>
+          {submitting ? "Submitting…" : "Submit Offer"}
+        </Button>
       </div>
     </main>
   );

@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
+import { buttonVariants } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 type BuyerRequest = {
   id: string;
@@ -100,10 +104,7 @@ export default function BuyerRequestsPage() {
       Manage your vehicle requests and compare dealer offers.
     </p>
 
-    <Link
-      href="/buyer/new"
-      className="inline-block mt-4 bg-black text-white px-5 py-2 rounded-xl hover:opacity-90 transition"
-    >
+    <Link href="/buyer/new" className={cn(buttonVariants(), "mt-4")}>
       + New Request
     </Link>
   </div>
@@ -142,72 +143,65 @@ export default function BuyerRequestsPage() {
 
 function StatCard({ title, value }: { title: string; value: number }) {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-      <div className="text-sm text-gray-500">{title}</div>
-      <div className="text-3xl font-semibold mt-2">{value}</div>
-    </div>
+    <Card>
+      <CardContent className="p-6">
+        <div className="text-sm text-muted-foreground">{title}</div>
+        <div className="text-3xl font-semibold mt-2">{value}</div>
+      </CardContent>
+    </Card>
   );
 }
 
 function RequestCard({ request }: { request: BuyerRequest }) {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-4 hover:shadow-md transition">
-      
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">
-          {request.make} {request.model} {request.year_min && request.year_max ? `(${request.year_min}–${request.year_max})` : ''}
-        </h2>
-        <StatusBadge status={request.status} />
-      </div>
+    <Card className="hover:shadow-md transition-shadow">
+      <CardContent className="p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">
+            {request.make} {request.model}{" "}
+            {request.year_min && request.year_max ? `(${request.year_min}–${request.year_max})` : ""}
+          </h2>
+          <StatusBadge status={request.status} />
+        </div>
 
-      <div className="text-sm text-gray-600 space-y-1">
-        <div>
-          ZIP {request.zip} • {request.radius_miles} mi
+        <div className="text-sm text-muted-foreground space-y-1">
+          <div>ZIP {request.zip} • {request.radius_miles} mi</div>
+          <div>
+            Price:{" "}
+            {request.min_price != null || request.max_price != null
+              ? `$${request.min_price ?? "0"} – $${request.max_price ?? "0"}`
+              : "Any"}
+          </div>
+          <div>
+            Mileage:{" "}
+            {request.max_miles != null ? `${request.max_miles.toLocaleString()} mi` : "Any"} •{" "}
+            Delivery: {request.delivery_preference}
+          </div>
+          <div>Payment: {request.payment_method === "cash" ? "Cash" : "Finance"}</div>
+          {request.payment_method !== "cash" && (
+            <>
+              <div>Credit: {request.credit_tier} • Term: {request.term_months} mo</div>
+              <div>Down: ${request.down_payment.toLocaleString()}</div>
+            </>
+          )}
         </div>
-        <div>
-          Price: {request.min_price != null || request.max_price != null ? ` $${request.min_price ?? '0'} - $${request.max_price ?? '0'}` : 'Any'}
-        </div>
-        <div>
-          Mileage: {request.max_miles != null ? `${request.max_miles.toLocaleString()} mi` : 'Any'} • Delivery: {request.delivery_preference}
-        </div>
-        <div>
-          Payment: {request.payment_method === "cash" ? "Cash" : "Finance"}
-        </div>
-        {request.payment_method !== "cash" && (
-          <>
-            <div>
-              Credit: {request.credit_tier} • Term: {request.term_months} mo
-            </div>
-            <div>
-              Down: ${request.down_payment}
-            </div>
-          </>
-        )}
-      </div>
 
-      <div className="pt-2">
         <Link
           href={`/buyer/requests/${request.id}`}
-          className="inline-block bg-black text-white px-4 py-2 rounded-xl hover:opacity-90 transition"
+          className={cn(buttonVariants({ size: "sm" }))}
         >
           View Offers
         </Link>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const color =
-    status === "open"
-      ? "bg-green-100 text-green-700"
-      : status === "accepted"
-      ? "bg-blue-100 text-blue-700"
-      : "bg-gray-100 text-gray-700";
+  const variant =
+    status === "open" ? "default" :
+    status === "accepted" ? "secondary" :
+    "outline";
 
-  return (
-    <span className={`px-3 py-1 rounded-full text-xs font-medium ${color}`}>
-      {status}
-    </span>
-  );
+  return <Badge variant={variant}>{status}</Badge>;
 }
