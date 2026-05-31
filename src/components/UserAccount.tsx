@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 type Profile = {
   display_name: string;
@@ -12,14 +13,17 @@ type Profile = {
 
 export default function UserAccount() {
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [notLoggedIn, setNotLoggedIn] = useState(false);
   const [open, setOpen] = useState(false);
-  const pathname = usePathname();
 
   useEffect(() => {
     async function load() {
       const { data } = await supabase.auth.getUser();
       const user = data.user;
-      if (!user) return;
+      if (!user) {
+        setNotLoggedIn(true);
+        return;
+      }
 
       const fallbackName =
         user.user_metadata?.display_name ||
@@ -31,23 +35,15 @@ export default function UserAccount() {
           : "";
       const fallbackRole = metadataRole === "dealer" ? "dealer" : "buyer";
 
-      const { data: profile } = await supabase
+      const { data: profileData } = await supabase
         .from("profiles")
         .select("display_name, role")
         .eq("id", user.id)
         .maybeSingle();
 
-      if (profile) {
-        setProfile({
-          display_name: profile.display_name || fallbackName,
-          role: (profile.role || fallbackRole).toLowerCase(),
-        });
-        return;
-      }
-
       setProfile({
-        display_name: String(fallbackName),
-        role: fallbackRole,
+        display_name: profileData?.display_name || String(fallbackName),
+        role: (profileData?.role || fallbackRole).toLowerCase(),
       });
     }
 
@@ -59,51 +55,107 @@ export default function UserAccount() {
     window.location.href = "/auth";
   }
 
-  if (!profile) return null;
+  // still loading
+  if (!profile && !notLoggedIn) return null;
 
-  const normalizedRole = profile.role?.trim().toLowerCase();
-  const isDealerContext = pathname?.startsWith("/dealer");
-  const showDealerAccount = normalizedRole === "dealer" || isDealerContext;
+  if (notLoggedIn) {
+    return (
+      <div className="flex items-center gap-3">
+        <Link
+          href="/auth"
+          className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
+        >
+          Sign in
+        </Link>
+        <Link
+          href="/auth"
+          className={cn(buttonVariants({ size: "sm" }))}
+        >
+          Get started
+        </Link>
+      </div>
+    );
+  }
+
+  const isDealer = profile!.role === "dealer";
 
   return (
-    <div className="relative">
-      {/* Button */}
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 font-medium hover:opacity-80"
-      >
-        {profile.display_name}
-        <span className="text-xs text-black">▾</span>
-      </button>
-
-      {/* Dropdown */}
-      {open && (
-        <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-md p-3 space-y-2 text-sm">
-
-          {showDealerAccount ? (
-            <>
-              <Link href="/dealer/account" className="block text-gray-700 hover:underline">
-                Profile
-              </Link>
-              <Link href="/dealer/offers" className="block text-gray-700 hover:underline">
-                My Offers
-              </Link>
-            </>
-          ) : (
-            <Link href="/buyer/requests" className="block text-gray-700 hover:underline">
-              Buyer Dashboard
-            </Link>
-          )}
-
-          <button
-            onClick={logout}
-            className="w-full text-left text-red-600 hover:opacity-80"
+    <div className="flex items-center gap-5">
+      {isDealer ? (
+        <>
+          <Link
+            href="/dealer/requests"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            Logout
-          </button>
-
-        </div>
+            Browse Requests
+          </Link>
+          <Link
+            href="/dealer/offers"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            My Offers
+          </Link>
+        </>
+      ) : (
+        <Link
+          href="/buyer/requests"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          My Requests
+        </Link>
       )}
+
+      <div className="relative">
+        <button
+          onClick={() => setOpen(!open)}
+          className="flex items-center gap-1.5 text-sm font-medium hover:opacity-75 transition-opacity"
+        >
+          {profile!.display_name}
+          <span className="text-xs text-muted-foreground">▾</span>
+        </button>
+
+        {open && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+            <div className="absolute right-0 mt-2 z-50 w-48 bg-popover border border-border rounded-xl shadow-md p-3 space-y-1 text-sm">
+              {isDealer ? (
+                <>
+                  <Link
+                    href="/dealer/account"
+                    onClick={() => setOpen(false)}
+                    className="block px-2 py-1.5 rounded-lg hover:bg-accent transition-colors"
+                  >
+                    Profile
+                  </Link>
+                  <Link
+                    href="/dealer/offers"
+                    onClick={() => setOpen(false)}
+                    className="block px-2 py-1.5 rounded-lg hover:bg-accent transition-colors"
+                  >
+                    My Offers
+                  </Link>
+                </>
+              ) : (
+                <Link
+                  href="/buyer/requests"
+                  onClick={() => setOpen(false)}
+                  className="block px-2 py-1.5 rounded-lg hover:bg-accent transition-colors"
+                >
+                  Dashboard
+                </Link>
+              )}
+              <div className="border-t border-border pt-1 mt-1">
+                <button
+                  onClick={logout}
+                  className="w-full text-left px-2 py-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
+                >
+                  Sign out
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
