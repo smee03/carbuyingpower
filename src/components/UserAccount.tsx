@@ -21,13 +21,34 @@ export default function UserAccount() {
       const user = data.user;
       if (!user) return;
 
+      const fallbackName =
+        user.user_metadata?.display_name ||
+        user.email?.split("@")[0] ||
+        "Account";
+      const metadataRole =
+        typeof user.user_metadata?.role === "string"
+          ? user.user_metadata.role.toLowerCase()
+          : "";
+      const fallbackRole = metadataRole === "dealer" ? "dealer" : "buyer";
+
       const { data: profile } = await supabase
         .from("profiles")
         .select("display_name, role")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
-      if (profile) setProfile(profile);
+      if (profile) {
+        setProfile({
+          display_name: profile.display_name || fallbackName,
+          role: (profile.role || fallbackRole).toLowerCase(),
+        });
+        return;
+      }
+
+      setProfile({
+        display_name: String(fallbackName),
+        role: fallbackRole,
+      });
     }
 
     load();
@@ -60,13 +81,18 @@ export default function UserAccount() {
         <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-md p-3 space-y-2 text-sm">
 
           {showDealerAccount ? (
-            <Link href="/dealer/account" className="block text-gray-700 hover:underline">
-              Dealer Account
-            </Link>
+            <>
+              <Link href="/dealer/account" className="block text-gray-700 hover:underline">
+                Profile
+              </Link>
+              <Link href="/dealer/offers" className="block text-gray-700 hover:underline">
+                My Offers
+              </Link>
+            </>
           ) : (
-            <div className="text-gray-500">
-              {profile.role.charAt(0).toUpperCase() + profile.role.slice(1)} Account
-            </div>
+            <Link href="/buyer/requests" className="block text-gray-700 hover:underline">
+              Buyer Dashboard
+            </Link>
           )}
 
           <button
