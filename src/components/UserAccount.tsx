@@ -17,37 +17,48 @@ export default function UserAccount() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    async function load() {
-      const { data } = await supabase.auth.getUser();
-      const user = data.user;
-      if (!user) {
-        setNotLoggedIn(true);
-        return;
-      }
-
+    async function loadProfile(
+      userId: string,
+      email: string | undefined,
+      meta: Record<string, unknown>
+    ) {
       const fallbackName =
-        user.user_metadata?.display_name ||
-        user.email?.split("@")[0] ||
-        "Account";
-      const metadataRole =
-        typeof user.user_metadata?.role === "string"
-          ? user.user_metadata.role.toLowerCase()
-          : "";
-      const fallbackRole = metadataRole === "dealer" ? "dealer" : "buyer";
+        (meta?.display_name as string) || email?.split("@")[0] || "Account";
+      const fallbackRole =
+        typeof meta?.role === "string" && meta.role.toLowerCase() === "dealer"
+          ? "dealer"
+          : "buyer";
 
       const { data: profileData } = await supabase
         .from("profiles")
         .select("display_name, role")
-        .eq("id", user.id)
+        .eq("id", userId)
         .maybeSingle();
 
       setProfile({
         display_name: profileData?.display_name || String(fallbackName),
         role: (profileData?.role || fallbackRole).toLowerCase(),
       });
+      setNotLoggedIn(false);
     }
 
-    load();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setNotLoggedIn(false);
+        loadProfile(
+          session.user.id,
+          session.user.email,
+          session.user.user_metadata ?? {}
+        );
+      } else {
+        setProfile(null);
+        setNotLoggedIn(true);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   async function logout() {
