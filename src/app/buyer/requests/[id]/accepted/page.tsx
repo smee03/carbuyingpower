@@ -141,7 +141,7 @@ export default function AcceptedDealPage() {
               <CardContent className="space-y-0">
                 <div className="flex justify-between items-center py-3 border-b border-border">
                   <span className="text-sm text-muted-foreground">Out-the-door total</span>
-                  <span className="text-2xl font-bold">{money(offer.otd_total)}</span>
+                  <span className="text-2xl font-bold text-green-600 dark:text-green-400">{money(offer.otd_total)}</span>
                 </div>
                 {offer.monthly_payment_est != null && (
                   <div className="flex justify-between py-3 border-b border-border text-sm">

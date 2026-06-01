@@ -513,7 +513,7 @@ export default function DealerOfferPage() {
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
                 <div className="text-xs text-muted-foreground mb-1">Out-the-door</div>
-                <div className="text-2xl font-bold">${otdTotal.toLocaleString()}</div>
+                <div className="text-2xl font-bold text-green-600 dark:text-green-400">${otdTotal.toLocaleString()}</div>
               </div>
               <div>
                 <div className="text-xs text-muted-foreground mb-1">Financed amount</div>

@@ -451,9 +451,9 @@ export default function BuyerRequestDetailPage() {
                 <div className="px-6 py-4 grid grid-cols-3 gap-4 border-b border-gray-100">
                   <div>
                     <div className="text-xs text-gray-400 mb-0.5">Out-the-door</div>
-                    <div className="text-xl font-bold text-gray-900">{money(o.otd_total)}</div>
+                    <div className="text-xl font-bold text-green-600 dark:text-green-400">{money(o.otd_total)}</div>
                     {savingsVsHighest > 0 && (
-                      <div className="text-xs text-green-600 font-medium mt-0.5">
+                      <div className="text-xs text-green-600 dark:text-green-400 font-medium mt-0.5">
                         {money(savingsVsHighest)} less than highest
                       </div>
                     )}
@@ -515,13 +515,13 @@ export default function BuyerRequestDetailPage() {
 
                       {[
                         { label: "Selling price", value: money(o.selling_price) },
-                        { label: "Dealer discount", value: `-${money(o.dealer_discount)}`, dim: o.dealer_discount === 0 },
-                        { label: "Rebates", value: `-${money(o.rebates)}`, dim: o.rebates === 0 },
+                        { label: "Dealer discount", value: `-${money(o.dealer_discount)}`, dim: o.dealer_discount === 0, save: o.dealer_discount > 0 },
+                        { label: "Rebates", value: `-${money(o.rebates)}`, dim: o.rebates === 0, save: o.rebates > 0 },
                         { label: "Add-ons", value: money(aTotal), warn: aTotal > 0 },
-                      ].map(({ label, value, dim, warn }) => (
+                      ].map(({ label, value, dim, warn, save }) => (
                         <div key={label} className={`grid grid-cols-2 px-4 py-2.5 border-t border-gray-100 ${dim ? "text-gray-400" : ""}`}>
                           <span>{label}</span>
-                          <span className={`text-right font-medium ${warn ? "text-amber-600" : ""}`}>{value}</span>
+                          <span className={`text-right font-medium ${warn ? "text-amber-600" : save ? "text-green-600 dark:text-green-400" : ""}`}>{value}</span>
                         </div>
                       ))}
 
@@ -560,7 +560,7 @@ export default function BuyerRequestDetailPage() {
 
                       <div className="grid grid-cols-2 px-4 py-3 border-t border-gray-300 bg-white font-bold text-base">
                         <span>Out-the-door total</span>
-                        <span className="text-right">{money(o.otd_total)}</span>
+                        <span className="text-right text-green-600 dark:text-green-400">{money(o.otd_total)}</span>
                       </div>
 
                       <div className="border-t border-gray-100 grid grid-cols-3 px-4 py-3 text-sm text-gray-600 bg-gray-50">

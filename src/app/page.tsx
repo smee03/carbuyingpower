@@ -79,7 +79,7 @@ export default function Home() {
             ))}
             <div className="border-t border-border pt-3 flex justify-between font-bold text-base">
               <span>Out-the-door total</span>
-              <span>$37,915</span>
+              <span className="text-green-600 dark:text-green-400">$37,915</span>
             </div>
           </div>
         </div>
