@@ -27,6 +27,7 @@ type BuyerRequest = {
   credit_tier: "760+" | "720-759" | "680-719" | "620-679" | "<620";
   term_months: number;
   down_payment: number;
+  miles_per_year?: number | null;
   notes: string | null;
   status: "open" | "paused" | "accepted" | "closed";
 };
@@ -337,20 +338,25 @@ export default function DealerOfferPage() {
                       ? `$${(req.min_price ?? 0).toLocaleString()} – $${(req.max_price ?? 0).toLocaleString()}`
                       : "Any",
                   },
-                  {
-                    label: "Max mileage",
-                    value: req.max_miles != null ? `${req.max_miles.toLocaleString()} mi` : "Any",
-                  },
+                  req.payment_method === "lease"
+                    ? {
+                        label: "Miles/year",
+                        value: req.miles_per_year ? `${req.miles_per_year.toLocaleString()} mi/yr` : "Any",
+                      }
+                    : {
+                        label: "Max mileage",
+                        value: req.max_miles != null ? `${req.max_miles.toLocaleString()} mi` : "Any",
+                      },
                   {
                     label: "Credit tier",
                     value: req.credit_tier,
                   },
                   {
-                    label: "Loan term",
+                    label: req.payment_method === "lease" ? "Lease term" : "Loan term",
                     value: `${req.term_months} months`,
                   },
                   {
-                    label: "Down payment",
+                    label: req.payment_method === "lease" ? "Due at signing" : "Down payment",
                     value: `$${req.down_payment.toLocaleString()}`,
                   },
                 ].map(({ label, value }) => (
@@ -486,23 +492,37 @@ export default function DealerOfferPage() {
           </CardContent>
         </Card>
 
-        {/* Finance assumptions */}
+        {/* Finance / Lease assumptions */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Finance Assumptions</CardTitle>
+            <CardTitle className="text-base">
+              {req?.payment_method === "lease" ? "Lease Terms" : "Finance Assumptions"}
+            </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <div className="grid grid-cols-3 gap-4">
-              <FieldGroup label="APR %">
-                <Input type="number" step="0.01" value={assumedApr} onChange={(e) => setAssumedApr(parseFloat(e.target.value || "0"))} />
+              <FieldGroup label={req?.payment_method === "lease" ? "Money factor" : "APR %"}>
+                <Input
+                  type="number"
+                  step={req?.payment_method === "lease" ? "0.0001" : "0.01"}
+                  placeholder={req?.payment_method === "lease" ? "e.g. 0.0020" : "e.g. 6.9"}
+                  value={assumedApr}
+                  onChange={(e) => setAssumedApr(parseFloat(e.target.value || "0"))}
+                />
               </FieldGroup>
-              <FieldGroup label="Term (months)">
+              <FieldGroup label={req?.payment_method === "lease" ? "Lease term (months)" : "Term (months)"}>
                 <Input type="number" value={assumedTerm} onChange={(e) => setAssumedTerm(asInt(e.target.value))} />
               </FieldGroup>
-              <FieldGroup label="Down payment ($)">
+              <FieldGroup label={req?.payment_method === "lease" ? "Due at signing ($)" : "Down payment ($)"}>
                 <Input type="number" value={assumedDown} onChange={(e) => setAssumedDown(asInt(e.target.value))} />
               </FieldGroup>
             </div>
+            {req?.payment_method === "lease" && (
+              <p className="text-xs text-muted-foreground">
+                Money factor × 2400 ≈ APR equivalent. Leave 0 if quoting a flat monthly payment.
+                Buyer requested <strong>{req.miles_per_year ? `${req.miles_per_year.toLocaleString()} mi/yr` : "any mileage"}</strong> — make sure your offer matches.
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -512,11 +532,15 @@ export default function DealerOfferPage() {
             <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-3">Computed totals</p>
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
-                <div className="text-xs text-muted-foreground mb-1">Out-the-door</div>
+                <div className="text-xs text-muted-foreground mb-1">
+                  {req?.payment_method === "lease" ? "Cap cost (OTD)" : "Out-the-door"}
+                </div>
                 <div className="text-2xl font-bold text-green-600 dark:text-green-400">${otdTotal.toLocaleString()}</div>
               </div>
               <div>
-                <div className="text-xs text-muted-foreground mb-1">Financed amount</div>
+                <div className="text-xs text-muted-foreground mb-1">
+                  {req?.payment_method === "lease" ? "Net cap cost" : "Financed amount"}
+                </div>
                 <div className="text-2xl font-bold">${principal.toLocaleString()}</div>
               </div>
               <div>
@@ -525,7 +549,9 @@ export default function DealerOfferPage() {
               </div>
             </div>
             <p className="text-xs text-muted-foreground mt-3">
-              Payment is a simple amortization estimate — excludes insurance and other costs.
+              {req?.payment_method === "lease"
+                ? "Monthly is a simplified estimate. Verify with your leasing system for exact figures."
+                : "Payment is a simple amortization estimate — excludes insurance and other costs."}
             </p>
           </CardContent>
         </Card>

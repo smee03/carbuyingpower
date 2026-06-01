@@ -58,6 +58,7 @@ export default function NewBuyerRequestPage() {
     credit_tier: "good",
     term_months: 60,
     down_payment: 5000,
+    miles_per_year: 12000,
     delivery_preference: "both",
   });
 
@@ -102,8 +103,14 @@ export default function NewBuyerRequestPage() {
       });
 
       if (!res.ok) {
-        const error = await res.json();
-        setMsg(error.message || "Failed to create request");
+        let errorMessage = `Request failed (${res.status})`;
+        try {
+          const error = await res.json();
+          errorMessage = error.message || errorMessage;
+        } catch {
+          // server returned HTML error page — show status code instead
+        }
+        setMsg(errorMessage);
         setLoading(false);
         return;
       }
@@ -269,11 +276,13 @@ export default function NewBuyerRequestPage() {
               <FieldGroup label="Payment method">
                 <select name="payment_method" value={formData.payment_method} onChange={handleChange} className={SELECT_CLS}>
                   <option value="finance">Finance</option>
+                  <option value="lease">Lease</option>
                   <option value="cash">Cash</option>
                 </select>
               </FieldGroup>
 
-              {formData.payment_method !== "cash" && (
+              {/* Finance fields */}
+              {formData.payment_method === "finance" && (
                 <>
                   <FieldGroup label="Credit tier">
                     <select name="credit_tier" value={formData.credit_tier} onChange={handleChange} className={SELECT_CLS}>
@@ -283,7 +292,6 @@ export default function NewBuyerRequestPage() {
                       <option value="poor">Poor (620–679)</option>
                     </select>
                   </FieldGroup>
-
                   <div className="grid grid-cols-2 gap-4">
                     <FieldGroup label="Loan term">
                       <select name="term_months" value={formData.term_months} onChange={handleChange} className={SELECT_CLS}>
@@ -294,17 +302,44 @@ export default function NewBuyerRequestPage() {
                       </select>
                     </FieldGroup>
                     <FieldGroup label="Down payment ($)">
-                      <Input
-                        type="number"
-                        name="down_payment"
-                        min="0"
-                        step="500"
-                        value={formData.down_payment}
-                        onChange={handleChange}
-                        required
-                      />
+                      <Input type="number" name="down_payment" min="0" step="500" value={formData.down_payment} onChange={handleChange} required />
                     </FieldGroup>
                   </div>
+                </>
+              )}
+
+              {/* Lease fields */}
+              {formData.payment_method === "lease" && (
+                <>
+                  <FieldGroup label="Credit tier">
+                    <select name="credit_tier" value={formData.credit_tier} onChange={handleChange} className={SELECT_CLS}>
+                      <option value="excellent">Excellent (750+)</option>
+                      <option value="good">Good (700–749)</option>
+                      <option value="fair">Fair (650–699)</option>
+                      <option value="poor">Poor (620–679)</option>
+                    </select>
+                  </FieldGroup>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FieldGroup label="Lease term">
+                      <select name="term_months" value={formData.term_months} onChange={handleChange} className={SELECT_CLS}>
+                        <option value={24}>24 months</option>
+                        <option value={36}>36 months</option>
+                        <option value={39}>39 months</option>
+                        <option value={48}>48 months</option>
+                      </select>
+                    </FieldGroup>
+                    <FieldGroup label="Miles per year">
+                      <select name="miles_per_year" value={formData.miles_per_year} onChange={handleChange} className={SELECT_CLS}>
+                        <option value={10000}>10,000 mi/yr</option>
+                        <option value={12000}>12,000 mi/yr</option>
+                        <option value={15000}>15,000 mi/yr</option>
+                        <option value={0}>Unlimited</option>
+                      </select>
+                    </FieldGroup>
+                  </div>
+                  <FieldGroup label="Money due at signing ($)" hint="Cap cost reduction, first month, fees — leave 0 if unsure">
+                    <Input type="number" name="down_payment" min="0" step="500" value={formData.down_payment} onChange={handleChange} />
+                  </FieldGroup>
                 </>
               )}
             </CardContent>

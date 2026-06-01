@@ -58,6 +58,7 @@ export async function POST(req: NextRequest) {
       credit_tier: credit_tier,
       term_months: body.term_months ?? 60,
       down_payment: body.down_payment ?? 0,
+      miles_per_year: body.payment_method === "lease" ? (body.miles_per_year ?? 12000) : null,
       status: "open",
     };
 
