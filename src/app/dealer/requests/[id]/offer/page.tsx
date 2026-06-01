@@ -118,6 +118,8 @@ export default function DealerOfferPage() {
   const [errors, setErrors] = useState<string[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [req, setReq] = useState<BuyerRequest | null>(null);
+  const [existingOfferId, setExistingOfferId] = useState<string | null>(null);
+  const [existingOfferDate, setExistingOfferDate] = useState<string | null>(null);
 
   const [vin, setVin] = useState("");
   const [stockNumber, setStockNumber] = useState("");
@@ -145,9 +147,40 @@ export default function DealerOfferPage() {
       const { data, error } = await supabase.from("buyer_requests").select("*").eq("id", requestId).single();
       if (error) { setMsg(error.message); setReq(null); setLoadingReq(false); return; }
 
-      setReq(data as BuyerRequest);
-      setAssumedTerm((data as any).term_months ?? 60);
-      setAssumedDown((data as any).down_payment ?? 0);
+      const reqData = data as BuyerRequest & { term_months: number; down_payment: number };
+      setReq(reqData);
+      setAssumedTerm(reqData.term_months ?? 60);
+      setAssumedDown(reqData.down_payment ?? 0);
+
+      // Load existing offer if dealer already submitted one
+      const { data: existing } = await supabase
+        .from("dealer_offers")
+        .select("*")
+        .eq("request_id", requestId)
+        .eq("dealer_id", auth.user.id)
+        .eq("status", "submitted")
+        .maybeSingle();
+
+      if (existing) {
+        setExistingOfferId(existing.id);
+        setExistingOfferDate(existing.created_at);
+        setVin(existing.vin ?? "");
+        setStockNumber(existing.stock_number ?? "");
+        setTrim(existing.trim ?? "");
+        setMsrp(existing.msrp ?? "");
+        setSellingPrice(existing.selling_price ?? 0);
+        setDealerDiscount(existing.dealer_discount ?? 0);
+        setRebates(existing.rebates ?? 0);
+        setAddons(Array.isArray(existing.addons) ? existing.addons : []);
+        setDocFee(existing.doc_fee ?? 0);
+        setTax(existing.tax ?? 0);
+        setTitleReg(existing.title_registration ?? 0);
+        setOtherFees(existing.other_fees ?? 0);
+        setAssumedApr(existing.assumed_apr ?? 0);
+        setAssumedTerm(existing.assumed_term_months ?? reqData.term_months ?? 60);
+        setAssumedDown(existing.assumed_down_payment ?? reqData.down_payment ?? 0);
+      }
+
       setLoadingReq(false);
     })();
   }, [requestId]);
@@ -180,9 +213,7 @@ export default function DealerOfferPage() {
     setWarnings(v.warnings);
     if (v.errors.length > 0) { setSubmitting(false); return; }
 
-    const { error } = await supabase.from("dealer_offers").insert({
-      request_id: requestId,
-      dealer_id: user.id,
+    const payload = {
       vin: vin.trim() || null,
       stock_number: stockNumber.trim() || null,
       trim: trim.trim() || null,
@@ -201,7 +232,11 @@ export default function DealerOfferPage() {
       assumed_term_months: assumedTerm || 60,
       assumed_down_payment: assumedDown || 0,
       monthly_payment_est: monthlyPaymentEst || null,
-    });
+    };
+
+    const { error } = existingOfferId
+      ? await supabase.from("dealer_offers").update(payload).eq("id", existingOfferId)
+      : await supabase.from("dealer_offers").insert({ request_id: requestId, dealer_id: user.id, ...payload });
 
     if (error) { setMsg(error.message); setSubmitting(false); return; }
     router.push("/dealer/requests");
@@ -216,9 +251,18 @@ export default function DealerOfferPage() {
             <Link href="/dealer/requests" className="text-sm text-muted-foreground hover:text-foreground transition">
               ← Back to requests
             </Link>
-            <h1 className="text-2xl font-bold tracking-tight mt-1">Make an Offer</h1>
+            <h1 className="text-2xl font-bold tracking-tight mt-1">
+              {existingOfferId ? "Your Submitted Offer" : "Make an Offer"}
+            </h1>
           </div>
         </div>
+
+        {existingOfferId && existingOfferDate && (
+          <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+            You submitted this offer on {new Date(existingOfferDate).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}.
+            You can update any field below and save your changes.
+          </div>
+        )}
 
         {msg && <p className="text-sm text-destructive">{msg}</p>}
 
@@ -425,7 +469,9 @@ export default function DealerOfferPage() {
         </Card>
 
         <Button className="w-full" size="lg" onClick={submitOffer} disabled={submitting}>
-          {submitting ? "Submitting…" : "Submit Offer"}
+          {submitting
+            ? (existingOfferId ? "Saving…" : "Submitting…")
+            : (existingOfferId ? "Save Changes" : "Submit Offer")}
         </Button>
       </div>
     </main>

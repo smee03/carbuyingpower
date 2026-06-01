@@ -54,6 +54,17 @@ function money(value: number | null | undefined) {
   return `$${Number(value || 0).toLocaleString()}`;
 }
 
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  const hours = Math.floor(mins / 60);
+  const days = Math.floor(hours / 24);
+  if (days > 0) return `${days}d ago`;
+  if (hours > 0) return `${hours}h ago`;
+  if (mins > 0) return `${mins}m ago`;
+  return "just now";
+}
+
 function addonsTotal(addons: Addon[] | null | undefined) {
   if (!Array.isArray(addons)) return 0;
   return addons.reduce((sum, a) => sum + (Number(a?.amount) || 0), 0);
@@ -328,11 +339,74 @@ export default function BuyerRequestDetailPage() {
             )}
           </div>
 
-          {!loading && offers.length === 0 && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-10 text-center text-gray-500">
-              <div className="text-2xl mb-2">📬</div>
-              <div className="font-medium">No offers yet</div>
-              <div className="text-sm mt-1">Dealers in your area will submit offers here.</div>
+          {!loading && offers.length === 0 && req && (
+            <div className="space-y-4">
+
+              {/* Live status */}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="bg-green-50 border-b border-green-100 px-6 py-4 flex items-center gap-3">
+                  <div className="relative flex-shrink-0 w-3 h-3">
+                    <div className="absolute inset-0 rounded-full bg-green-500" />
+                    <div className="absolute inset-0 rounded-full bg-green-400 animate-ping" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-green-800 text-sm">Your request is live</div>
+                    <div className="text-xs text-green-700 mt-0.5">
+                      Posted {timeAgo(req.created_at)} · dealers within {req.radius_miles} miles of {req.zip} are reviewing
+                    </div>
+                  </div>
+                </div>
+
+                <div className="px-6 py-5 space-y-4">
+                  <p className="text-sm text-gray-500">Offers will appear here as dealers respond. Here&apos;s what to expect:</p>
+                  <ol className="space-y-3">
+                    {[
+                      { done: true,  label: "Request posted",        desc: "Your request is visible to matching dealers." },
+                      { done: false, label: "Dealers are reviewing",  desc: "Local dealers are checking inventory and preparing offers." },
+                      { done: false, label: "Offers arrive here",     desc: "Each offer includes a full OTD breakdown you can compare side by side." },
+                    ].map((step, i) => (
+                      <li key={i} className="flex gap-3 text-sm">
+                        <div className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${
+                          step.done ? "bg-green-500 text-white" : "bg-gray-100 text-gray-400"
+                        }`}>
+                          {step.done ? "✓" : i + 1}
+                        </div>
+                        <div>
+                          <span className={`font-medium ${step.done ? "text-gray-900" : "text-gray-500"}`}>{step.label}</span>
+                          <span className="text-gray-400"> — {step.desc}</span>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              </div>
+
+              {/* What dealers see */}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">What dealers see in your request</div>
+                <div className="grid grid-cols-2 gap-x-8 gap-y-2.5 text-sm">
+                  {[
+                    { label: "Vehicle",   value: vehicleLabel },
+                    { label: "Condition", value: req.condition },
+                    { label: "Location",  value: `ZIP ${req.zip} · ${req.radius_miles} mi radius` },
+                    { label: "Credit",    value: req.credit_tier },
+                    { label: "Term",      value: `${req.term_months} months` },
+                    { label: "Down",      value: `$${req.down_payment.toLocaleString()}` },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="flex gap-2">
+                      <span className="text-gray-400 w-20 flex-shrink-0">{label}</span>
+                      <span className="text-gray-800 font-medium">{value}</span>
+                    </div>
+                  ))}
+                </div>
+                {req.notes && (
+                  <div className="mt-4 pt-4 border-t border-gray-100 text-sm">
+                    <span className="text-gray-400">Notes — </span>
+                    <span className="text-gray-700">{req.notes}</span>
+                  </div>
+                )}
+              </div>
+
             </div>
           )}
 

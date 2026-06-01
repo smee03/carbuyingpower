@@ -103,9 +103,12 @@ export default function DealerRequestsPage() {
                   : `(${r.condition})`}
               </div>
               {submittedRequestIds.has(r.id) ? (
-                <span className="border border-green-200 bg-green-50 text-green-700 px-3 py-1 rounded">
-                  Offer submitted
-                </span>
+                <Link
+                  href={`/dealer/requests/${r.id}/offer`}
+                  className="border border-green-200 bg-green-50 text-green-700 px-3 py-1 rounded hover:bg-green-100 transition text-sm"
+                >
+                  Offer submitted →
+                </Link>
               ) : (
                 <Link
                   className="border px-3 py-1"
