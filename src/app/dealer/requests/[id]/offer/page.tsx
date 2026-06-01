@@ -292,21 +292,83 @@ export default function DealerOfferPage() {
 
         {/* Buyer request summary */}
         {req && (
-          <Card>
-            <CardContent className="p-5">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-2">Buyer wants</p>
-              <p className="font-semibold">
-                {req.desired_models}{" "}
-                {(req.year_min || req.year_max)
-                  ? `(${req.year_min && req.year_max ? `${req.year_min}–${req.year_max}` : `${req.year_min ?? req.year_max}`})`
-                  : `(${req.condition})`}
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                ZIP {req.zip} • {req.radius_miles} mi •{" "}
-                Price: {req.min_price != null || req.max_price != null ? `$${req.min_price ?? "0"} – $${req.max_price ?? "0"}` : "Any"} •{" "}
-                Credit: {req.credit_tier} • Term: {req.term_months} mo • Down: ${req.down_payment.toLocaleString()}
-              </p>
-              {req.notes && <p className="text-sm mt-2 text-muted-foreground">Notes: {req.notes}</p>}
+          <Card className="bg-muted/20">
+            <CardContent className="p-5 space-y-4">
+
+              {/* Vehicle + condition */}
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                    Buyer Request
+                  </p>
+                  <p className="text-xl font-bold leading-tight">
+                    {req.make && req.model
+                      ? `${req.make} ${req.model}`
+                      : req.make ?? req.desired_models ?? "Vehicle"}
+                  </p>
+                  {(req.year_min || req.year_max) && (
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      {req.year_min && req.year_max
+                        ? `${req.year_min}–${req.year_max}`
+                        : req.year_min ? `From ${req.year_min}` : `Up to ${req.year_max}`}
+                    </p>
+                  )}
+                </div>
+                <span className={cn(
+                  "flex-shrink-0 text-xs px-2.5 py-1 rounded-full font-medium border",
+                  req.condition === "new"    ? "bg-blue-50 text-blue-700 border-blue-200" :
+                  req.condition === "used"   ? "bg-amber-50 text-amber-700 border-amber-200" :
+                                              "bg-muted text-muted-foreground border-border"
+                )}>
+                  {req.condition === "new" ? "New" : req.condition === "used" ? "Used" : "New or Used"}
+                </span>
+              </div>
+
+              {/* Detail grid */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {[
+                  {
+                    label: "Location",
+                    value: `ZIP ${req.zip} · ${req.radius_miles} mi radius`,
+                  },
+                  {
+                    label: "Price range",
+                    value: req.min_price != null || req.max_price != null
+                      ? `$${(req.min_price ?? 0).toLocaleString()} – $${(req.max_price ?? 0).toLocaleString()}`
+                      : "Any",
+                  },
+                  {
+                    label: "Max mileage",
+                    value: req.max_miles != null ? `${req.max_miles.toLocaleString()} mi` : "Any",
+                  },
+                  {
+                    label: "Credit tier",
+                    value: req.credit_tier,
+                  },
+                  {
+                    label: "Loan term",
+                    value: `${req.term_months} months`,
+                  },
+                  {
+                    label: "Down payment",
+                    value: `$${req.down_payment.toLocaleString()}`,
+                  },
+                ].map(({ label, value }) => (
+                  <div key={label} className="bg-background rounded-lg px-3 py-2.5">
+                    <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
+                    <p className="text-sm font-medium">{value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Notes */}
+              {req.notes && (
+                <div className="bg-background rounded-lg px-3 py-2.5">
+                  <p className="text-xs text-muted-foreground mb-0.5">Buyer notes</p>
+                  <p className="text-sm">{req.notes}</p>
+                </div>
+              )}
+
             </CardContent>
           </Card>
         )}

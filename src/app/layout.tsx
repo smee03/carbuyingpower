@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import UserAccount from "@/components/UserAccount";
+import { ThemeProvider } from "@/components/ThemeProvider";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import Link from "next/link";
 
 const geistSans = Geist({
@@ -25,17 +27,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <body className="bg-background text-foreground antialiased">
-        <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
-          <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-            <Link href="/" className="font-bold text-lg tracking-tight">
-              CarBuyingPower
-            </Link>
-            <UserAccount />
-          </div>
-        </header>
-        {children}
+        <ThemeProvider>
+          <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
+            <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+              <Link href="/" className="font-bold text-lg tracking-tight">
+                CarBuyingPower
+              </Link>
+              <div className="flex items-center gap-2">
+                <ThemeToggle />
+                <UserAccount />
+              </div>
+            </div>
+          </header>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );
