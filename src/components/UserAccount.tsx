@@ -5,6 +5,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { ChevronDown } from "lucide-react";
 
 type Profile = {
   display_name: string;
@@ -96,13 +97,13 @@ export default function UserAccount() {
         <>
           <Link
             href="/dealer/requests"
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="font-handwriting text-base font-semibold text-muted-foreground hover:text-foreground transition-colors"
           >
             Browse Requests
           </Link>
           <Link
             href="/dealer/offers"
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="font-handwriting text-base font-semibold text-muted-foreground hover:text-foreground transition-colors"
           >
             My Offers
           </Link>
@@ -110,7 +111,7 @@ export default function UserAccount() {
       ) : (
         <Link
           href="/buyer/requests"
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="font-handwriting text-base font-semibold text-muted-foreground hover:text-foreground transition-colors"
         >
           My Requests
         </Link>
@@ -119,10 +120,15 @@ export default function UserAccount() {
       <div className="relative">
         <button
           onClick={() => setOpen(!open)}
-          className="flex items-center gap-1.5 text-sm font-medium hover:opacity-75 transition-opacity"
+          className="flex items-center gap-2 rounded-full border border-border bg-muted hover:bg-accent transition-colors pl-1 pr-2.5 py-1"
         >
-          {profile!.display_name}
-          <span className="text-xs text-muted-foreground">▾</span>
+          <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center flex-shrink-0">
+            {profile!.display_name.slice(0, 1).toUpperCase()}
+          </div>
+          <span className="font-handwriting text-base font-semibold hidden sm:inline max-w-[120px] truncate">
+            {profile!.display_name}
+          </span>
+          <ChevronDown className="size-3.5 text-muted-foreground" />
         </button>
 
         {open && (

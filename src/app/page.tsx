@@ -12,7 +12,7 @@ export default function Home() {
           <div className="inline-block rounded-full border border-border bg-muted px-4 py-1.5 text-xs text-muted-foreground">
             Free for buyers · Transparent OTD pricing
           </div>
-          <h1 className="text-5xl md:text-6xl font-bold tracking-tight leading-tight">
+          <h1 className="font-handwriting text-6xl md:text-7xl font-bold leading-tight">
             Make dealers compete<br className="hidden md:block" /> for your business
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
@@ -34,7 +34,7 @@ export default function Home() {
       <section className="bg-muted/40 border-b border-border">
         <div className="max-w-6xl mx-auto px-6 py-24">
           <div className="text-center mb-14">
-            <h2 className="text-3xl font-bold tracking-tight">How it works</h2>
+            <h2 className="font-handwriting text-4xl font-bold">How it works</h2>
             <p className="text-muted-foreground mt-2">Three steps from request to deal.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
@@ -55,7 +55,7 @@ export default function Home() {
       <section className="border-b border-border">
         <div className="max-w-6xl mx-auto px-6 py-24 grid md:grid-cols-2 gap-16 items-center">
           <div className="space-y-5">
-            <h2 className="text-3xl font-bold tracking-tight">
+            <h2 className="font-handwriting text-4xl font-bold">
               No hidden fees.<br />No surprises at the table.
             </h2>
             <p className="text-muted-foreground leading-relaxed">
@@ -89,7 +89,7 @@ export default function Home() {
       <section className="bg-muted/40 border-b border-border">
         <div className="max-w-6xl mx-auto px-6 py-24 grid md:grid-cols-2 gap-16 items-center">
           <div className="space-y-5">
-            <h2 className="text-3xl font-bold tracking-tight">
+            <h2 className="font-handwriting text-4xl font-bold">
               For dealers: reach motivated buyers
             </h2>
             <p className="text-muted-foreground leading-relaxed">
@@ -120,7 +120,7 @@ export default function Home() {
       {/* ── Bottom CTA ── */}
       <section className="bg-primary text-primary-foreground border-b border-border">
         <div className="max-w-6xl mx-auto px-6 py-24 text-center space-y-6">
-          <h2 className="text-3xl font-bold tracking-tight">Ready to buy smarter?</h2>
+          <h2 className="font-handwriting text-4xl font-bold">Ready to buy smarter?</h2>
           <p className="text-lg opacity-75 max-w-lg mx-auto">
             Join buyers saving thousands by letting local dealers compete for
             their business.

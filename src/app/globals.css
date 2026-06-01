@@ -10,6 +10,7 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
+  --font-handwriting: var(--font-caveat);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -127,4 +128,46 @@
   html {
     @apply font-sans;
   }
+}
+
+/* Page surface color — used by torn-edge overlay to match bg-muted/40 */
+:root  { --page-surface: oklch(0.978 0.005 255); }
+.dark  { --page-surface: oklch(0.166 0.022 258); }
+
+.paper-card {
+  background-color: #fefcf5;
+  background-image:
+    repeating-linear-gradient(
+      transparent,
+      transparent calc(1.875rem - 1px),
+      #ddd0a0 calc(1.875rem - 1px),
+      #ddd0a0 1.875rem
+    ),
+    linear-gradient(
+      90deg,
+      transparent 5.5rem,
+      #f5a0a0 5.5rem,
+      #f5a0a0 calc(5.5rem + 1px),
+      transparent calc(5.5rem + 1px)
+    );
+  background-position: 0 3.75rem, 0 0;
+}
+
+.dark .paper-card {
+  background-color: #1e1b13;
+  background-image:
+    repeating-linear-gradient(
+      transparent,
+      transparent calc(1.875rem - 1px),
+      #3a3118 calc(1.875rem - 1px),
+      #3a3118 1.875rem
+    ),
+    linear-gradient(
+      90deg,
+      transparent 5.5rem,
+      #5a2020 5.5rem,
+      #5a2020 calc(5.5rem + 1px),
+      transparent calc(5.5rem + 1px)
+    );
+  background-position: 0 3.75rem, 0 0;
 }
