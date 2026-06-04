@@ -12,6 +12,7 @@ type BuyerRequest = {
   id: string;
   make: string;
   model: string;
+  desired_models?: string | null;
   condition_types: string;
   min_price?: number | null;
   max_price?: number | null;
@@ -158,7 +159,9 @@ function RequestCard({ request }: { request: BuyerRequest }) {
       <CardContent className="p-6 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">
-            {request.make} {request.model}{" "}
+            {(request.make || request.model)
+              ? `${request.make} ${request.model}`.trim()
+              : (request.desired_models || "Vehicle Request")}{" "}
             {request.year_min && request.year_max ? `(${request.year_min}–${request.year_max})` : ""}
           </h2>
           <StatusBadge status={request.status} />

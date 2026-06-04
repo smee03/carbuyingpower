@@ -18,12 +18,16 @@ export default function AuthPage() {
   async function submit() {
     setMsg("");
     if (!email || !pw) return setMsg("Enter email + password");
+
+    // Sign-ups are closed during the preview period
+    if (mode === "signup") {
+      setMsg("New sign-ups are paused. Check back soon.");
+      return;
+    }
+
     setLoading(true);
 
-    const res =
-      mode === "signup"
-        ? await supabase.auth.signUp({ email, password: pw })
-        : await supabase.auth.signInWithPassword({ email, password: pw });
+    const res = await supabase.auth.signInWithPassword({ email, password: pw });
 
     if (res.error) {
       setMsg(res.error.message);
@@ -31,29 +35,28 @@ export default function AuthPage() {
       return;
     }
 
-    if (mode === "signin") {
-      const signedInUser = res.data.user;
-      if (!signedInUser) {
-        setMsg("Check your email for a confirmation link, then sign in.");
-        setLoading(false);
-        return;
-      }
-
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", signedInUser.id)
-        .maybeSingle();
-
-      if (profileError) {
-        setMsg(profileError.message);
-        setLoading(false);
-        return;
-      }
-
-      if (profile?.role === "dealer") { router.push("/dealer/account"); return; }
-      if (profile?.role === "buyer") { router.push("/buyer/requests"); return; }
+    const signedInUser = res.data.user;
+    if (!signedInUser) {
+      setMsg("Check your email for a confirmation link, then sign in.");
+      setLoading(false);
+      return;
     }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", signedInUser.id)
+      .maybeSingle();
+
+    if (profileError) {
+      setMsg(profileError.message);
+      setLoading(false);
+      return;
+    }
+
+    if (profile?.role === "admin") { router.push("/admin"); return; }
+    if (profile?.role === "dealer") { router.push("/dealer/account"); return; }
+    if (profile?.role === "buyer") { router.push("/buyer/requests"); return; }
 
     router.push("/onboarding");
   }

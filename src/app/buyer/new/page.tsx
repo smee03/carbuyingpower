@@ -9,13 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-
-const MAKES_AND_MODELS: Record<string, string[]> = {
-  Toyota: ["Camry", "Corolla", "RAV4", "Highlander", "Tacoma", "4Runner", "Prius"],
-  Honda: ["Civic", "Accord", "CR-V", "Pilot", "Odyssey", "HR-V"],
-  Ford: ["F-150", "Mustang", "Explorer", "Escape", "Edge", "Ranger"],
-  Hyundai: ["Elantra", "Sonata", "Santa Fe", "Tucson", "Venue", "Ioniq"],
-};
+import { MAKE_LIST, getModels } from "@/lib/vehicleData";
 
 const SELECT_CLS =
   "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm transition-colors outline-none focus:border-ring focus:ring-2 focus:ring-ring/50 disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50";
@@ -42,6 +36,9 @@ export default function NewBuyerRequestPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
+
+  const [customMake, setCustomMake] = useState("");
+  const [customModel, setCustomModel] = useState("");
 
   const [formData, setFormData] = useState({
     make: "",
@@ -93,13 +90,22 @@ export default function NewBuyerRequestPage() {
         return;
       }
 
+      const submitData = {
+        ...formData,
+        make: formData.make === "Other" ? customMake.trim() : formData.make,
+        model: formData.model === "Other" ? customModel.trim() : formData.model,
+      };
+
+      if (!submitData.make) { setMsg("Please enter a make."); setLoading(false); return; }
+      if (!submitData.model) { setMsg("Please enter a model."); setLoading(false); return; }
+
       const res = await fetch("/api/buyer-requests", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(submitData),
       });
 
       if (!res.ok) {
@@ -155,10 +161,18 @@ export default function NewBuyerRequestPage() {
                 <FieldGroup label="Make *">
                   <select name="make" value={formData.make} onChange={handleChange} required className={SELECT_CLS}>
                     <option value="">Select a make</option>
-                    {Object.keys(MAKES_AND_MODELS).map((make) => (
+                    {MAKE_LIST.map((make) => (
                       <option key={make} value={make}>{make}</option>
                     ))}
                   </select>
+                  {formData.make === "Other" && (
+                    <Input
+                      className="mt-2"
+                      placeholder="Enter make"
+                      value={customMake}
+                      onChange={(e) => setCustomMake(e.target.value)}
+                    />
+                  )}
                 </FieldGroup>
                 <FieldGroup label="Model *">
                   <select
@@ -171,10 +185,18 @@ export default function NewBuyerRequestPage() {
                   >
                     <option value="">Select a model</option>
                     {formData.make &&
-                      MAKES_AND_MODELS[formData.make].map((model) => (
+                      getModels(formData.make).map((model) => (
                         <option key={model} value={model}>{model}</option>
                       ))}
                   </select>
+                  {formData.model === "Other" && (
+                    <Input
+                      className="mt-2"
+                      placeholder="Enter model"
+                      value={customModel}
+                      onChange={(e) => setCustomModel(e.target.value)}
+                    />
+                  )}
                 </FieldGroup>
               </div>
 
