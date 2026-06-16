@@ -377,7 +377,11 @@ export default function DealerOffersPage() {
                     Submitted {timeAgo(offer.created_at)}
                   </span>
                   <Link
-                    href={`/dealer/requests/${offer.request_id}/offer`}
+                    href={
+                      isAccepted
+                        ? `/dealer/requests/${offer.request_id}/accepted?offerId=${offer.id}`
+                        : `/dealer/requests/${offer.request_id}/offer`
+                    }
                     className={cn(
                       buttonVariants({ variant: isAccepted ? "default" : "outline", size: "sm" })
                     )}

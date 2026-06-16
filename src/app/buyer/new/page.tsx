@@ -132,7 +132,7 @@ export default function NewBuyerRequestPage() {
   const years = Array.from({ length: 2027 - 1982 + 1 }, (_, i) => 1982 + i);
 
   return (
-    <main className="min-h-screen bg-muted/40 p-8">
+    <main className="min-h-screen bg-muted/40 p-4 sm:p-8">
       <div className="max-w-2xl mx-auto space-y-6">
 
         <Link
@@ -157,7 +157,7 @@ export default function NewBuyerRequestPage() {
           <Card>
             <CardHeader><CardTitle>Vehicle</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FieldGroup label="Make *">
                   <select name="make" value={formData.make} onChange={handleChange} required className={SELECT_CLS}>
                     <option value="">Select a make</option>
@@ -200,7 +200,7 @@ export default function NewBuyerRequestPage() {
                 </FieldGroup>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FieldGroup label="Condition">
                   <select name="condition_types" value={formData.condition_types} onChange={handleChange} className={SELECT_CLS}>
                     <option value="new">New</option>
@@ -223,7 +223,7 @@ export default function NewBuyerRequestPage() {
                 </FieldGroup>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FieldGroup label="Year From">
                   <select name="year_min" value={formData.year_min} onChange={handleChange} className={SELECT_CLS}>
                     {years.map((y) => <option key={y} value={y}>{y}</option>)}
@@ -242,7 +242,7 @@ export default function NewBuyerRequestPage() {
           <Card>
             <CardHeader><CardTitle>Budget &amp; Location</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FieldGroup label="Min Price ($)">
                   <Input type="number" name="min_price" min="0" step="500" value={formData.min_price} onChange={handleChange} />
                 </FieldGroup>
@@ -314,7 +314,7 @@ export default function NewBuyerRequestPage() {
                       <option value="poor">Poor (620–679)</option>
                     </select>
                   </FieldGroup>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FieldGroup label="Loan term">
                       <select name="term_months" value={formData.term_months} onChange={handleChange} className={SELECT_CLS}>
                         <option value={36}>36 months</option>
@@ -341,7 +341,7 @@ export default function NewBuyerRequestPage() {
                       <option value="poor">Poor (620–679)</option>
                     </select>
                   </FieldGroup>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FieldGroup label="Lease term">
                       <select name="term_months" value={formData.term_months} onChange={handleChange} className={SELECT_CLS}>
                         <option value={24}>24 months</option>

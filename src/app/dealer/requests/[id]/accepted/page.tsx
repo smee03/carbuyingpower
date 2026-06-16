@@ -1,42 +1,47 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Mail, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type AcceptedOffer = {
+type DealerOffer = {
   id: string;
-  dealer_id: string;
   otd_total: number;
+  selling_price: number;
   monthly_payment_est: number | null;
   assumed_apr: number | null;
   assumed_term_months: number | null;
   assumed_down_payment: number | null;
-  status: string;
 };
 
 type BuyerRequest = {
   id: string;
-  desired_models: string;
+  buyer_id: string;
   make?: string | null;
   model?: string | null;
-  status: string;
+  desired_models?: string | null;
 };
 
-function money(value: number | null | undefined) {
-  return `$${Number(value || 0).toLocaleString()}`;
+type BuyerProfile = {
+  display_name: string | null;
+  email: string | null;
+  phone: string | null;
+};
+
+function money(n: number | null | undefined) {
+  return `$${Number(n || 0).toLocaleString()}`;
 }
 
 const NEXT_STEPS = [
-  "The dealer will contact you to confirm the vehicle and finalize pricing details.",
-  "Have your ID, proof of insurance, and any required paperwork ready.",
-  "If financing, the dealer may request a credit application or verification.",
-  "Confirm pickup or delivery timing and review all final documents before signing.",
+  "Reach out to the buyer to introduce yourself and confirm their timeline.",
+  "Verify the specific vehicle (VIN / stock #) is available and ready.",
+  "Prepare financing documents, title transfer, and any add-on paperwork.",
+  "Schedule the visit, walk the buyer through the final figures, and get signatures.",
 ];
 
 function AcceptedContent() {
@@ -47,9 +52,9 @@ function AcceptedContent() {
 
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
-  const [dealerName, setDealerName] = useState("the dealer");
-  const [offer, setOffer] = useState<AcceptedOffer | null>(null);
+  const [offer, setOffer] = useState<DealerOffer | null>(null);
   const [request, setRequest] = useState<BuyerRequest | null>(null);
+  const [buyer, setBuyer] = useState<BuyerProfile | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -64,30 +69,11 @@ function AcceptedContent() {
         return;
       }
 
-      const requestRes = await supabase
-        .from("buyer_requests")
-        .select("*")
-        .eq("id", requestId)
-        .single();
-
-      if (requestRes.error || !requestRes.data) {
-        setMsg(requestRes.error?.message || "Request not found");
-        setLoading(false);
-        return;
-      }
-
-      if (requestRes.data.buyer_id !== user.id) {
-        setMsg("You do not have access to this request.");
-        setLoading(false);
-        return;
-      }
-
-      setRequest(requestRes.data as BuyerRequest);
-
       const offerQuery = supabase
         .from("dealer_offers")
         .select("*")
         .eq("request_id", requestId)
+        .eq("dealer_id", user.id)
         .eq("status", "accepted");
 
       const offerRes = offerId
@@ -95,23 +81,35 @@ function AcceptedContent() {
         : await offerQuery.order("created_at", { ascending: false }).limit(1).maybeSingle();
 
       if (offerRes.error || !offerRes.data) {
-        setMsg(offerRes.error?.message || "Accepted offer not found");
+        setMsg(offerRes.error?.message || "Accepted offer not found.");
         setLoading(false);
         return;
       }
 
-      const acceptedOffer = offerRes.data as AcceptedOffer;
-      setOffer(acceptedOffer);
+      setOffer(offerRes.data as DealerOffer);
+
+      const reqRes = await supabase
+        .from("buyer_requests")
+        .select("id, buyer_id, make, model, desired_models")
+        .eq("id", requestId)
+        .single();
+
+      if (reqRes.error || !reqRes.data) {
+        setMsg(reqRes.error?.message || "Request not found.");
+        setLoading(false);
+        return;
+      }
+
+      const loadedReq = reqRes.data as BuyerRequest;
+      setRequest(loadedReq);
 
       const profileRes = await supabase
         .from("profiles")
-        .select("display_name")
-        .eq("id", acceptedOffer.dealer_id)
+        .select("display_name, email, phone")
+        .eq("id", loadedReq.buyer_id)
         .maybeSingle();
 
-      if (profileRes.data?.display_name) {
-        setDealerName(profileRes.data.display_name);
-      }
+      if (profileRes.data) setBuyer(profileRes.data as BuyerProfile);
 
       setLoading(false);
     })();
@@ -119,16 +117,12 @@ function AcceptedContent() {
 
   const vehicleName = request?.make
     ? `${request.make}${request.model ? " " + request.model : ""}`
-    : request?.desired_models ?? "your vehicle";
+    : request?.desired_models ?? "the vehicle";
 
-  if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
-  }
+  const buyerName = buyer?.display_name || "The buyer";
 
-  if (msg) {
-    return <p className="text-sm text-destructive">{msg}</p>;
-  }
-
+  if (loading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (msg) return <p className="text-sm text-destructive">{msg}</p>;
   if (!offer) return null;
 
   return (
@@ -138,26 +132,29 @@ function AcceptedContent() {
         <div className="flex justify-center">
           <CheckCircle2 className="size-16 text-green-500" />
         </div>
-        <h1 className="text-3xl font-bold tracking-tight">Deal accepted!</h1>
+        <h1 className="text-3xl font-bold tracking-tight">You got the deal!</h1>
         <p className="text-muted-foreground">
-          You locked in an offer from{" "}
-          <span className="font-semibold text-foreground">{dealerName}</span>{" "}
-          on your {vehicleName}.
+          <span className="font-semibold text-foreground">{buyerName}</span> accepted
+          your offer on the {vehicleName}.
         </p>
       </div>
 
       {/* Deal summary */}
       <Card>
-        <CardHeader><CardTitle>Deal summary</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Your offer</CardTitle></CardHeader>
         <CardContent className="space-y-0">
           <div className="flex justify-between items-center py-3 border-b border-border">
             <span className="text-sm text-muted-foreground">Out-the-door total</span>
             <span className="text-2xl font-bold text-green-600 dark:text-green-400">{money(offer.otd_total)}</span>
           </div>
+          <div className="flex justify-between py-3 border-b border-border text-sm">
+            <span className="text-muted-foreground">Selling price</span>
+            <span className="font-medium">{money(offer.selling_price)}</span>
+          </div>
           {offer.monthly_payment_est != null && (
             <div className="flex justify-between py-3 border-b border-border text-sm">
-              <span className="text-muted-foreground">Est. monthly payment</span>
-              <span className="font-semibold">{money(offer.monthly_payment_est)}/mo</span>
+              <span className="text-muted-foreground">Est. monthly</span>
+              <span className="font-medium">{money(offer.monthly_payment_est)}/mo</span>
             </div>
           )}
           {offer.assumed_apr != null && (
@@ -181,6 +178,36 @@ function AcceptedContent() {
         </CardContent>
       </Card>
 
+      {/* Buyer contact */}
+      {buyer && (buyer.display_name || buyer.email || buyer.phone) && (
+        <Card>
+          <CardHeader><CardTitle>Buyer contact</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            {buyer.display_name && (
+              <p className="font-semibold text-sm">{buyer.display_name}</p>
+            )}
+            {buyer.email && (
+              <a
+                href={`mailto:${buyer.email}`}
+                className="flex items-center gap-2 text-sm text-primary hover:underline"
+              >
+                <Mail className="size-4 flex-shrink-0" />
+                {buyer.email}
+              </a>
+            )}
+            {buyer.phone && (
+              <a
+                href={`tel:${buyer.phone}`}
+                className="flex items-center gap-2 text-sm text-primary hover:underline"
+              >
+                <Phone className="size-4 flex-shrink-0" />
+                {buyer.phone}
+              </a>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Next steps */}
       <Card>
         <CardHeader><CardTitle>What happens next</CardTitle></CardHeader>
@@ -200,23 +227,23 @@ function AcceptedContent() {
 
       {/* Actions */}
       <div className="flex gap-3">
-        <Link href="/buyer/requests" className={cn(buttonVariants(), "flex-1 text-center")}>
-          Go to Dashboard
+        <Link href="/dealer/offers" className={cn(buttonVariants(), "flex-1 text-center")}>
+          My Offers
         </Link>
         <Link
-          href={`/buyer/requests/${requestId}`}
+          href="/dealer/requests"
           className={cn(buttonVariants({ variant: "outline" }), "flex-1 text-center")}
         >
-          View Offer Details
+          Browse Requests
         </Link>
       </div>
     </>
   );
 }
 
-export default function AcceptedDealPage() {
+export default function DealerAcceptedPage() {
   return (
-    <main className="min-h-screen bg-muted/40 p-8">
+    <main className="min-h-screen bg-muted/40 p-4 sm:p-8">
       <div className="max-w-xl mx-auto space-y-6">
         <Suspense fallback={<p className="text-sm text-muted-foreground">Loading…</p>}>
           <AcceptedContent />

@@ -90,7 +90,7 @@ export default function BuyerRequestsPage() {
   const acceptedCount = requests.filter((r) => r.status === "accepted").length;
 
   return (
-    <main className="min-h-screen bg-gray-50 p-8">
+    <main className="min-h-screen bg-muted/40 p-4 sm:p-8">
       <div className="max-w-6xl mx-auto space-y-8">
 
 {/* Header */}
@@ -102,7 +102,7 @@ export default function BuyerRequestsPage() {
       Buyer Dashboard
     </h1>
 
-    <p className="text-sm text-gray-500 mt-1">
+    <p className="text-sm text-muted-foreground mt-1">
       Manage your vehicle requests and compare dealer offers.
     </p>
 
@@ -114,7 +114,7 @@ export default function BuyerRequestsPage() {
 </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-3 gap-3 sm:gap-6">
           <StatCard title="Open Requests" value={openCount} />
           <StatCard title="Offers Received" value={offerCount} />
           <StatCard title="Accepted Deals" value={acceptedCount} />
@@ -130,10 +130,10 @@ export default function BuyerRequestsPage() {
 
         {/* Content */}
         {loading && <p>Loading…</p>}
-        {msg && <p className="text-sm text-red-600">{msg}</p>}
+        {msg && <p className="text-sm text-destructive">{msg}</p>}
 
         {!loading && requests.length === 0 && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center text-gray-500">
+          <div className="rounded-2xl border border-border bg-card p-8 text-center text-muted-foreground">
             No requests yet. Create your first one.
           </div>
         )}
@@ -154,9 +154,9 @@ export default function BuyerRequestsPage() {
 function StatCard({ title, value }: { title: string; value: number }) {
   return (
     <Card>
-      <CardContent className="p-6">
-        <div className="text-sm text-muted-foreground">{title}</div>
-        <div className="text-3xl font-semibold mt-2">{value}</div>
+      <CardContent className="p-4 sm:p-6">
+        <div className="text-xs sm:text-sm text-muted-foreground">{title}</div>
+        <div className="text-2xl sm:text-3xl font-semibold mt-1 sm:mt-2">{value}</div>
       </CardContent>
     </Card>
   );

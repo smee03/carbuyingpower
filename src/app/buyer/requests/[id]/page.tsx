@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 type BuyerRequest = {
   id: string;
@@ -77,32 +79,32 @@ function getOfferWarnings(o: DealerOffer) {
     (o.vin && o.vin.trim().length > 0) ||
     (o.stock_number && o.stock_number.trim().length > 0) ||
     (o.trim && o.trim.trim().length > 0);
-  if (!hasIdentifier) warnings.push("No VIN/Stock#/Trim provided (harder to verify this exact car).");
-  if (addOns > 0) warnings.push(`Add-ons included ($${addOns.toLocaleString()}). Confirm these are removable/optional.`);
-  if (o.doc_fee >= 700) warnings.push(`Doc fee is high ($${o.doc_fee.toLocaleString()}). Ask what it includes and if it's capped by state.`);
-  if (o.tax <= 50) warnings.push(`Sales tax looks unusually low ($${o.tax.toLocaleString()}). Confirm full tax calculation is included.`);
-  if (o.title_registration >= 1500) warnings.push(`Title/registration looks high ($${o.title_registration.toLocaleString()}). Confirm DMV estimate.`);
-  if (o.other_fees >= 500) warnings.push(`Other fees are notable ($${o.other_fees.toLocaleString()}). Ask for itemization.`);
-  if (o.dealer_discount > o.selling_price) warnings.push("Dealer discount exceeds selling price (likely an input error).");
-  if (o.otd_total <= 0) warnings.push("OTD total is not valid (should be > 0).");
+  if (!hasIdentifier) warnings.push("No VIN/Stock#/Trim provided — harder to verify this exact car.");
+  if (addOns > 0) warnings.push(`Add-ons included (${money(addOns)}). Confirm these are removable/optional.`);
+  if (o.doc_fee >= 700) warnings.push(`Doc fee is high (${money(o.doc_fee)}). Ask what it includes.`);
+  if (o.tax <= 50) warnings.push(`Sales tax looks unusually low (${money(o.tax)}). Confirm full tax is included.`);
+  if (o.title_registration >= 1500) warnings.push(`Title/registration looks high (${money(o.title_registration)}). Confirm DMV estimate.`);
+  if (o.other_fees >= 500) warnings.push(`Other fees are notable (${money(o.other_fees)}). Ask for itemization.`);
+  if (o.dealer_discount > o.selling_price) warnings.push("Dealer discount exceeds selling price — likely an input error.");
+  if (o.otd_total <= 0) warnings.push("OTD total is not valid — should be greater than $0.");
   return warnings;
 }
 
 type SortKey = "otd" | "payment" | "addons";
 
 const REQUEST_STATUS_COLORS: Record<string, string> = {
-  open: "bg-green-100 text-green-700",
-  accepted: "bg-blue-100 text-blue-700",
-  paused: "bg-yellow-100 text-yellow-700",
-  closed: "bg-gray-100 text-gray-700",
+  open:     "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400",
+  accepted: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400",
+  paused:   "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400",
+  closed:   "bg-muted text-muted-foreground",
 };
 
 const OFFER_STATUS_COLORS: Record<string, string> = {
-  submitted: "bg-gray-100 text-gray-700",
-  accepted: "bg-green-100 text-green-700",
-  expired: "bg-red-100 text-red-700",
-  declined: "bg-red-100 text-red-700",
-  withdrawn: "bg-gray-100 text-gray-500",
+  submitted: "bg-muted text-muted-foreground",
+  accepted:  "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400",
+  expired:   "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400",
+  declined:  "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400",
+  withdrawn: "bg-muted text-muted-foreground",
 };
 
 export default function BuyerRequestDetailPage() {
@@ -264,49 +266,52 @@ export default function BuyerRequestDetailPage() {
   }
 
   const vehicleLabel = req
-    ? `${req.desired_models}${req.year_min || req.year_max ? ` (${req.year_min && req.year_max ? `${req.year_min}–${req.year_max}` : `${req.year_min ?? req.year_max}`})` : ` (${req.condition})`}`
+    ? `${req.desired_models}${req.year_min || req.year_max
+        ? ` (${req.year_min && req.year_max ? `${req.year_min}–${req.year_max}` : `${req.year_min ?? req.year_max}`})`
+        : ` (${req.condition})`}`
     : "";
 
   return (
-    <main className="min-h-screen bg-gray-50 p-6">
+    <main className="min-h-screen bg-muted/40 p-4 sm:p-6">
       <div className="max-w-4xl mx-auto space-y-6">
 
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between">
           <div>
-            <Link href="/buyer/requests" className="text-sm text-gray-500 hover:text-gray-800 transition">
+            <Link
+              href="/buyer/requests"
+              className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "-ml-3 mb-1")}
+            >
               ← Back to Dashboard
             </Link>
-            {req && (
-              <h1 className="text-2xl font-bold tracking-tight mt-1">{vehicleLabel}</h1>
-            )}
+            {req && <h1 className="text-2xl font-bold tracking-tight">{vehicleLabel}</h1>}
           </div>
           {req && (
-            <span className={`px-3 py-1 rounded-full text-xs font-medium ${REQUEST_STATUS_COLORS[req.status] ?? "bg-gray-100 text-gray-700"}`}>
+            <span className={`px-3 py-1 rounded-full text-xs font-medium ${REQUEST_STATUS_COLORS[req.status] ?? "bg-muted text-muted-foreground"}`}>
               {req.status}
             </span>
           )}
         </div>
 
-        {msg && <p className="text-sm text-red-600">{msg}</p>}
-        {loading && <p className="text-sm text-gray-500">Loading…</p>}
+        {msg && <p className="text-sm text-destructive">{msg}</p>}
+        {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
 
         {/* Request details card */}
         {req && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-3">
-            <div className="text-sm font-medium text-gray-500 uppercase tracking-wide">Your Request</div>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm text-gray-700">
-              <div><span className="text-gray-400">Location</span> — ZIP {req.zip} • {req.radius_miles} mi</div>
-              <div><span className="text-gray-400">Credit</span> — {req.credit_tier}</div>
-              <div><span className="text-gray-400">Term</span> — {req.term_months} months</div>
-              <div><span className="text-gray-400">Down</span> — ${req.down_payment.toLocaleString()}</div>
+          <div className="bg-card rounded-2xl border border-border p-6 space-y-3">
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Your Request</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-sm text-foreground">
+              <div><span className="text-muted-foreground">Location</span> — ZIP {req.zip} · {req.radius_miles} mi</div>
+              <div><span className="text-muted-foreground">Credit</span> — {req.credit_tier}</div>
+              <div><span className="text-muted-foreground">Term</span> — {req.term_months} months</div>
+              <div><span className="text-muted-foreground">Down</span> — ${req.down_payment.toLocaleString()}</div>
             </div>
             {req.notes && (
-              <div className="text-sm text-gray-600 border-t pt-3 mt-1">
-                <span className="text-gray-400">Notes</span> — {req.notes}
+              <div className="text-sm border-t border-border pt-3">
+                <span className="text-muted-foreground">Notes</span> — {req.notes}
               </div>
             )}
-            <div className="text-xs text-gray-400 border-t pt-3">
+            <div className="text-xs text-muted-foreground border-t border-border pt-3">
               Posted {new Date(req.created_at).toLocaleString()}
             </div>
           </div>
@@ -314,22 +319,24 @@ export default function BuyerRequestDetailPage() {
 
         {/* Offers section */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-start sm:items-center justify-between flex-wrap gap-2">
             <h2 className="text-lg font-semibold">
               Offers
               {offers.length > 0 && (
-                <span className="ml-2 text-sm font-normal text-gray-400">{offers.length} received</span>
+                <span className="ml-2 text-sm font-normal text-muted-foreground">{offers.length} received</span>
               )}
             </h2>
 
             {offers.length > 1 && (
-              <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-xl p-1 text-sm">
+              <div className="flex items-center gap-1 bg-card border border-border rounded-xl p-1 text-sm">
                 {(["otd", "payment", "addons"] as SortKey[]).map((key) => (
                   <button
                     key={key}
                     onClick={() => setSortKey(key)}
-                    className={`px-3 py-1 rounded-lg transition ${
-                      sortKey === key ? "bg-black text-white" : "text-gray-500 hover:text-gray-800"
+                    className={`px-3 py-1 rounded-lg transition text-sm ${
+                      sortKey === key
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     {key === "otd" ? "OTD" : key === "payment" ? "Payment" : "Add-ons"}
@@ -339,41 +346,43 @@ export default function BuyerRequestDetailPage() {
             )}
           </div>
 
+          {/* Empty state */}
           {!loading && offers.length === 0 && req && (
             <div className="space-y-4">
-
-              {/* Live status */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="bg-green-50 border-b border-green-100 px-6 py-4 flex items-center gap-3">
+              <div className="bg-card rounded-2xl border border-border overflow-hidden">
+                <div className="bg-green-50 dark:bg-green-900/20 border-b border-green-100 dark:border-green-900/40 px-6 py-4 flex items-center gap-3">
                   <div className="relative flex-shrink-0 w-3 h-3">
                     <div className="absolute inset-0 rounded-full bg-green-500" />
                     <div className="absolute inset-0 rounded-full bg-green-400 animate-ping" />
                   </div>
                   <div>
-                    <div className="font-semibold text-green-800 text-sm">Your request is live</div>
-                    <div className="text-xs text-green-700 mt-0.5">
+                    <div className="font-semibold text-green-800 dark:text-green-400 text-sm">Your request is live</div>
+                    <div className="text-xs text-green-700 dark:text-green-500 mt-0.5">
                       Posted {timeAgo(req.created_at)} · dealers within {req.radius_miles} miles of {req.zip} are reviewing
                     </div>
                   </div>
                 </div>
-
                 <div className="px-6 py-5 space-y-4">
-                  <p className="text-sm text-gray-500">Offers will appear here as dealers respond. Here&apos;s what to expect:</p>
+                  <p className="text-sm text-muted-foreground">Offers will appear here as dealers respond.</p>
                   <ol className="space-y-3">
                     {[
-                      { done: true,  label: "Request posted",        desc: "Your request is visible to matching dealers." },
-                      { done: false, label: "Dealers are reviewing",  desc: "Local dealers are checking inventory and preparing offers." },
-                      { done: false, label: "Offers arrive here",     desc: "Each offer includes a full OTD breakdown you can compare side by side." },
+                      { done: true,  label: "Request posted",       desc: "Your request is visible to matching dealers." },
+                      { done: false, label: "Dealers are reviewing", desc: "Local dealers are checking inventory and preparing offers." },
+                      { done: false, label: "Offers arrive here",    desc: "Each offer includes a full OTD breakdown you can compare." },
                     ].map((step, i) => (
                       <li key={i} className="flex gap-3 text-sm">
                         <div className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${
-                          step.done ? "bg-green-500 text-white" : "bg-gray-100 text-gray-400"
+                          step.done
+                            ? "bg-green-500 text-white"
+                            : "bg-muted text-muted-foreground"
                         }`}>
                           {step.done ? "✓" : i + 1}
                         </div>
                         <div>
-                          <span className={`font-medium ${step.done ? "text-gray-900" : "text-gray-500"}`}>{step.label}</span>
-                          <span className="text-gray-400"> — {step.desc}</span>
+                          <span className={`font-medium ${step.done ? "text-foreground" : "text-muted-foreground"}`}>
+                            {step.label}
+                          </span>
+                          <span className="text-muted-foreground"> — {step.desc}</span>
                         </div>
                       </li>
                     ))}
@@ -381,10 +390,11 @@ export default function BuyerRequestDetailPage() {
                 </div>
               </div>
 
-              {/* What dealers see */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">What dealers see in your request</div>
-                <div className="grid grid-cols-2 gap-x-8 gap-y-2.5 text-sm">
+              <div className="bg-card rounded-2xl border border-border p-6">
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">
+                  What dealers see in your request
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2.5 text-sm">
                   {[
                     { label: "Vehicle",   value: vehicleLabel },
                     { label: "Condition", value: req.condition },
@@ -394,22 +404,22 @@ export default function BuyerRequestDetailPage() {
                     { label: "Down",      value: `$${req.down_payment.toLocaleString()}` },
                   ].map(({ label, value }) => (
                     <div key={label} className="flex gap-2">
-                      <span className="text-gray-400 w-20 flex-shrink-0">{label}</span>
-                      <span className="text-gray-800 font-medium">{value}</span>
+                      <span className="text-muted-foreground w-20 flex-shrink-0">{label}</span>
+                      <span className="text-foreground font-medium">{value}</span>
                     </div>
                   ))}
                 </div>
                 {req.notes && (
-                  <div className="mt-4 pt-4 border-t border-gray-100 text-sm">
-                    <span className="text-gray-400">Notes — </span>
-                    <span className="text-gray-700">{req.notes}</span>
+                  <div className="mt-4 pt-4 border-t border-border text-sm">
+                    <span className="text-muted-foreground">Notes — </span>
+                    <span>{req.notes}</span>
                   </div>
                 )}
               </div>
-
             </div>
           )}
 
+          {/* Offer cards */}
           {sortedOffers.map((o, idx) => {
             const aTotal = addonsTotal(o.addons);
             const warnings = getOfferWarnings(o);
@@ -419,39 +429,38 @@ export default function BuyerRequestDetailPage() {
             const isExpanded = expandedOfferId === o.id;
             const isBest = idx === 0 && sortedOffers.length > 1 && (o.status === "submitted" || o.status === "accepted");
             const dealerName = dealerNames[o.dealer_id] || "Dealer";
+            const isSubmitted = o.status === "submitted";
 
             return (
               <div
                 key={o.id}
-                className={`bg-white rounded-2xl shadow-sm border transition ${
-                  isBest ? "border-green-300 ring-1 ring-green-200" : "border-gray-200"
+                className={`bg-card rounded-2xl border transition ${
+                  isBest ? "border-green-300 dark:border-green-700 ring-1 ring-green-200 dark:ring-green-800" : "border-border"
                 }`}
               >
-                {/* Rank header */}
-                <div className="flex items-center gap-3 px-6 pt-5 pb-1">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
-                    isBest ? "bg-green-500 text-white" : "bg-gray-100 text-gray-500"
+                {/* Rank + dealer header */}
+                <div className="flex items-center gap-3 px-6 pt-5 pb-3">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                    isBest ? "bg-green-500 text-white" : "bg-muted text-muted-foreground"
                   }`}>
                     {idx + 1}
                   </div>
-                  <span className="font-semibold text-gray-900">{dealerName}</span>
+                  <span className="font-semibold">{dealerName}</span>
                   {isBest && (
-                    <span className="text-xs font-medium bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 rounded-full">
+                    <span className="text-xs font-medium bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 px-2 py-0.5 rounded-full">
                       Best {sortKey === "otd" ? "OTD" : sortKey === "payment" ? "Payment" : "Fewest Add-ons"}
                     </span>
                   )}
-                  <div className="ml-auto">
-                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${OFFER_STATUS_COLORS[o.status] ?? "bg-gray-100 text-gray-600"}`}>
-                      {offerStatusLabel(o.status)}
-                    </span>
-                  </div>
+                  <span className={`ml-auto px-2.5 py-0.5 rounded-full text-xs font-medium ${OFFER_STATUS_COLORS[o.status] ?? "bg-muted text-muted-foreground"}`}>
+                    {offerStatusLabel(o.status)}
+                  </span>
                 </div>
 
                 {/* At-a-glance summary */}
-                <div className="px-6 py-4 grid grid-cols-3 gap-4 border-b border-gray-100">
+                <div className="px-6 pb-4 grid grid-cols-3 gap-2 sm:gap-4 border-b border-border">
                   <div>
-                    <div className="text-xs text-gray-400 mb-0.5">Out-the-door</div>
-                    <div className="text-xl font-bold text-green-600 dark:text-green-400">{money(o.otd_total)}</div>
+                    <div className="text-xs text-muted-foreground mb-0.5">Out-the-door</div>
+                    <div className="text-lg sm:text-xl font-bold text-green-600 dark:text-green-400">{money(o.otd_total)}</div>
                     {savingsVsHighest > 0 && (
                       <div className="text-xs text-green-600 dark:text-green-400 font-medium mt-0.5">
                         {money(savingsVsHighest)} less than highest
@@ -459,46 +468,70 @@ export default function BuyerRequestDetailPage() {
                     )}
                   </div>
                   <div>
-                    <div className="text-xs text-gray-400 mb-0.5">Est. monthly</div>
-                    <div className="text-xl font-bold text-gray-900">
+                    <div className="text-xs text-muted-foreground mb-0.5">Est. monthly</div>
+                    <div className="text-lg sm:text-xl font-bold">
                       {o.monthly_payment_est ? `${money(o.monthly_payment_est)}/mo` : "—"}
                     </div>
                     {o.assumed_apr != null && (
-                      <div className="text-xs text-gray-400 mt-0.5">{o.assumed_apr}% APR · {o.assumed_term_months} mo</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">{o.assumed_apr}% APR · {o.assumed_term_months} mo</div>
                     )}
                   </div>
                   <div>
-                    <div className="text-xs text-gray-400 mb-0.5">Add-ons</div>
-                    <div className={`text-xl font-bold ${aTotal > 0 ? "text-amber-600" : "text-gray-900"}`}>
+                    <div className="text-xs text-muted-foreground mb-0.5">Add-ons</div>
+                    <div className={`text-lg sm:text-xl font-bold ${aTotal > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}>
                       {aTotal > 0 ? money(aTotal) : "None"}
                     </div>
                     {aTotal > 0 && (
-                      <div className="text-xs text-amber-600 mt-0.5">{o.addons.length} item{o.addons.length !== 1 ? "s" : ""}</div>
+                      <div className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                        {o.addons.length} item{o.addons.length !== 1 ? "s" : ""}
+                      </div>
                     )}
                   </div>
                 </div>
 
-                {/* Expand toggle */}
-                <button
-                  type="button"
-                  onClick={() => setExpandedOfferId(isExpanded ? null : o.id)}
-                  className="w-full flex items-center justify-center gap-1 py-3 text-sm text-gray-500 hover:text-gray-800 transition"
-                >
-                  {isExpanded ? "Hide breakdown" : "View full breakdown"}
-                  <span className={`transition-transform ${isExpanded ? "rotate-180" : ""}`}>▾</span>
-                </button>
+                {/* Accept button — visible without expanding */}
+                {isSubmitted && (
+                  <div className="px-6 py-3 flex items-center gap-3 border-b border-border">
+                    <Button
+                      size="sm"
+                      onClick={() => handleOfferDecision(o, "accepted")}
+                      disabled={decidingOfferId === o.id}
+                    >
+                      {decidingOfferId === o.id ? "Processing…" : "Accept Offer"}
+                    </Button>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedOfferId(isExpanded ? null : o.id)}
+                      className="text-sm text-muted-foreground hover:text-foreground transition underline underline-offset-4"
+                    >
+                      Decline or view breakdown
+                    </button>
+                  </div>
+                )}
+
+                {/* Expand toggle (when not submitted) */}
+                {!isSubmitted && (
+                  <button
+                    type="button"
+                    onClick={() => setExpandedOfferId(isExpanded ? null : o.id)}
+                    className="w-full flex items-center justify-center gap-1 py-3 text-sm text-muted-foreground hover:text-foreground transition"
+                  >
+                    {isExpanded ? "Hide breakdown" : "View full breakdown"}
+                    <span className={`transition-transform ${isExpanded ? "rotate-180" : ""}`}>▾</span>
+                  </button>
+                )}
 
                 {/* Expanded breakdown */}
                 {isExpanded && (
-                  <div className="px-6 pb-6 space-y-4 border-t border-gray-100 pt-4">
+                  <div className="px-6 pb-6 space-y-4 border-t border-border pt-4">
 
                     {/* Warnings */}
                     {warnings.length > 0 && (
-                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-                        <div className="text-sm font-semibold text-amber-800 mb-2">Things to verify</div>
+                      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+                        <div className="text-sm font-semibold text-amber-800 dark:text-amber-400 mb-2">Things to verify</div>
                         <ul className="space-y-1">
                           {warnings.map((w, i) => (
-                            <li key={i} className="flex gap-2 text-sm text-amber-700">
+                            <li key={i} className="flex gap-2 text-sm text-amber-700 dark:text-amber-500">
                               <span className="mt-0.5 shrink-0">⚠</span>
                               <span>{w}</span>
                             </li>
@@ -508,27 +541,29 @@ export default function BuyerRequestDetailPage() {
                     )}
 
                     {/* OTD Breakdown table */}
-                    <div className="rounded-xl border border-gray-200 overflow-hidden text-sm">
-                      <div className="bg-gray-50 px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    <div className="rounded-xl border border-border overflow-hidden text-sm">
+                      <div className="bg-muted/40 px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                         OTD Breakdown
                       </div>
 
                       {[
-                        { label: "Selling price", value: money(o.selling_price) },
-                        { label: "Dealer discount", value: `-${money(o.dealer_discount)}`, dim: o.dealer_discount === 0, save: o.dealer_discount > 0 },
-                        { label: "Rebates", value: `-${money(o.rebates)}`, dim: o.rebates === 0, save: o.rebates > 0 },
-                        { label: "Add-ons", value: money(aTotal), warn: aTotal > 0 },
+                        { label: "Selling price",    value: money(o.selling_price) },
+                        { label: "Dealer discount",  value: `-${money(o.dealer_discount)}`, dim: o.dealer_discount === 0, save: o.dealer_discount > 0 },
+                        { label: "Rebates",          value: `-${money(o.rebates)}`, dim: o.rebates === 0, save: o.rebates > 0 },
+                        { label: "Add-ons",          value: money(aTotal), warn: aTotal > 0 },
                       ].map(({ label, value, dim, warn, save }) => (
-                        <div key={label} className={`grid grid-cols-2 px-4 py-2.5 border-t border-gray-100 ${dim ? "text-gray-400" : ""}`}>
+                        <div key={label} className={`grid grid-cols-2 px-4 py-2.5 border-t border-border ${dim ? "text-muted-foreground" : ""}`}>
                           <span>{label}</span>
-                          <span className={`text-right font-medium ${warn ? "text-amber-600" : save ? "text-green-600 dark:text-green-400" : ""}`}>{value}</span>
+                          <span className={`text-right font-medium ${warn ? "text-amber-600 dark:text-amber-400" : save ? "text-green-600 dark:text-green-400" : ""}`}>
+                            {value}
+                          </span>
                         </div>
                       ))}
 
                       {Array.isArray(o.addons) && o.addons.length > 0 && (
-                        <div className="px-4 pb-2 bg-amber-50 border-t border-amber-100">
+                        <div className="px-4 pb-2 bg-amber-50 dark:bg-amber-900/20 border-t border-amber-100 dark:border-amber-900/40">
                           {o.addons.map((a, i) => (
-                            <div key={i} className="grid grid-cols-2 py-1 text-xs text-amber-700">
+                            <div key={i} className="grid grid-cols-2 py-1 text-xs text-amber-700 dark:text-amber-500">
                               <span className="pl-3">{a.name || "(unnamed)"}</span>
                               <span className="text-right">{money(a.amount)}</span>
                             </div>
@@ -536,49 +571,49 @@ export default function BuyerRequestDetailPage() {
                         </div>
                       )}
 
-                      <div className="grid grid-cols-2 px-4 py-2.5 border-t border-gray-200 bg-gray-50 font-medium">
+                      <div className="grid grid-cols-2 px-4 py-2.5 border-t border-border bg-muted/40 font-medium">
                         <span>Vehicle subtotal</span>
                         <span className="text-right">{money(vehicleSubtotal)}</span>
                       </div>
 
                       {[
-                        { label: "Doc fee", value: money(o.doc_fee) },
-                        { label: "Sales tax", value: money(o.tax) },
+                        { label: "Doc fee",            value: money(o.doc_fee) },
+                        { label: "Sales tax",          value: money(o.tax) },
                         { label: "Title / registration", value: money(o.title_registration) },
-                        { label: "Other fees", value: money(o.other_fees) },
+                        { label: "Other fees",         value: money(o.other_fees) },
                       ].map(({ label, value }) => (
-                        <div key={label} className="grid grid-cols-2 px-4 py-2.5 border-t border-gray-100 text-gray-600">
+                        <div key={label} className="grid grid-cols-2 px-4 py-2.5 border-t border-border text-muted-foreground">
                           <span>{label}</span>
                           <span className="text-right">{value}</span>
                         </div>
                       ))}
 
-                      <div className="grid grid-cols-2 px-4 py-2.5 border-t border-gray-200 bg-gray-50 font-medium text-gray-600">
+                      <div className="grid grid-cols-2 px-4 py-2.5 border-t border-border bg-muted/40 font-medium text-muted-foreground">
                         <span>Fees subtotal</span>
                         <span className="text-right">{money(feesTotal)}</span>
                       </div>
 
-                      <div className="grid grid-cols-2 px-4 py-3 border-t border-gray-300 bg-white font-bold text-base">
+                      <div className="grid grid-cols-2 px-4 py-3 border-t border-border font-bold text-base">
                         <span>Out-the-door total</span>
                         <span className="text-right text-green-600 dark:text-green-400">{money(o.otd_total)}</span>
                       </div>
 
-                      <div className="border-t border-gray-100 grid grid-cols-3 px-4 py-3 text-sm text-gray-600 bg-gray-50">
+                      <div className="border-t border-border grid grid-cols-3 px-4 py-3 text-sm text-muted-foreground bg-muted/40">
                         <div>
-                          <div className="text-xs text-gray-400">APR</div>
+                          <div className="text-xs text-muted-foreground">APR</div>
                           {o.assumed_apr != null ? `${o.assumed_apr}%` : "—"}
                         </div>
                         <div>
-                          <div className="text-xs text-gray-400">Term</div>
+                          <div className="text-xs text-muted-foreground">Term</div>
                           {o.assumed_term_months != null ? `${o.assumed_term_months} mo` : "—"}
                         </div>
                         <div>
-                          <div className="text-xs text-gray-400">Down</div>
+                          <div className="text-xs text-muted-foreground">Down</div>
                           {o.assumed_down_payment != null ? money(o.assumed_down_payment) : "—"}
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 px-4 py-3 border-t border-gray-200 bg-white font-semibold">
+                      <div className="grid grid-cols-2 px-4 py-3 border-t border-border font-semibold">
                         <span>Est. monthly payment</span>
                         <span className="text-right">
                           {o.monthly_payment_est ? `${money(o.monthly_payment_est)}/mo` : "—"}
@@ -588,54 +623,47 @@ export default function BuyerRequestDetailPage() {
 
                     {/* Vehicle identifiers */}
                     {(o.vin || o.stock_number || o.trim || o.msrp) && (
-                      <div className="rounded-xl border border-gray-200 px-4 py-3 text-sm grid grid-cols-2 gap-y-2 text-gray-600">
-                        {o.trim && <div><span className="text-gray-400">Trim</span> — {o.trim}</div>}
-                        {o.vin && <div><span className="text-gray-400">VIN</span> — {o.vin}</div>}
-                        {o.stock_number && <div><span className="text-gray-400">Stock #</span> — {o.stock_number}</div>}
-                        {o.msrp != null && <div><span className="text-gray-400">MSRP</span> — {money(o.msrp)}</div>}
+                      <div className="rounded-xl border border-border px-4 py-3 text-sm grid grid-cols-1 sm:grid-cols-2 gap-y-2 text-muted-foreground">
+                        {o.trim && <div><span className="text-muted-foreground">Trim</span> — {o.trim}</div>}
+                        {o.vin && <div><span className="text-muted-foreground">VIN</span> — {o.vin}</div>}
+                        {o.stock_number && <div><span className="text-muted-foreground">Stock #</span> — {o.stock_number}</div>}
+                        {o.msrp != null && <div><span className="text-muted-foreground">MSRP</span> — {money(o.msrp)}</div>}
                       </div>
                     )}
 
                     {/* Decline reason (if already declined) */}
                     {(o.status === "expired" || o.status === "declined") && o.decline_reason && (
-                      <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
+                      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-3 text-sm text-red-700 dark:text-red-400">
                         <span className="font-semibold">Decline reason:</span> {o.decline_reason}
                       </div>
                     )}
 
-                    {/* Accept / decline */}
-                    {o.status === "submitted" && (
-                      <div className="rounded-xl border border-gray-200 p-4 space-y-3">
-                        <label className="block text-sm font-medium text-gray-700">
-                          Decline reason <span className="font-normal text-gray-400">(required only if declining)</span>
+                    {/* Decline section (only for submitted offers) */}
+                    {isSubmitted && (
+                      <div className="rounded-xl border border-border p-4 space-y-3">
+                        <label className="block text-sm font-medium">
+                          Decline reason{" "}
+                          <span className="font-normal text-muted-foreground">(required to decline)</span>
                         </label>
                         <textarea
                           value={decisionNotes[o.id] || ""}
                           onChange={(e) => setDecisionNotes((prev) => ({ ...prev, [o.id]: e.target.value }))}
-                          className="w-full border border-gray-200 rounded-lg p-3 text-sm text-gray-800 resize-none focus:outline-none focus:ring-2 focus:ring-black"
+                          className="w-full border border-border rounded-lg p-3 text-sm bg-background resize-none focus:outline-none focus:ring-2 focus:ring-ring"
                           rows={3}
                           placeholder="e.g. price above budget, fees too high, trim mismatch…"
                         />
-                        <div className="flex gap-3">
-                          <button
-                            onClick={() => handleOfferDecision(o, "accepted")}
-                            disabled={decidingOfferId === o.id}
-                            className="bg-black text-white px-5 py-2 rounded-xl hover:opacity-90 transition disabled:opacity-40"
-                          >
-                            Accept Offer
-                          </button>
-                          <button
-                            onClick={() => handleOfferDecision(o, "declined")}
-                            disabled={decidingOfferId === o.id}
-                            className="border border-red-300 text-red-700 px-5 py-2 rounded-xl hover:bg-red-50 transition disabled:opacity-40"
-                          >
-                            Decline
-                          </button>
-                        </div>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleOfferDecision(o, "declined")}
+                          disabled={decidingOfferId === o.id}
+                        >
+                          Decline Offer
+                        </Button>
                       </div>
                     )}
 
-                    <div className="text-xs text-gray-400 text-right">
+                    <div className="text-xs text-muted-foreground text-right">
                       Submitted {new Date(o.created_at).toLocaleString()}
                     </div>
                   </div>

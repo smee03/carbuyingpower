@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -121,6 +121,7 @@ export default function DealerOfferPage() {
   const [req, setReq] = useState<BuyerRequest | null>(null);
   const [existingOfferId, setExistingOfferId] = useState<string | null>(null);
   const [existingOfferDate, setExistingOfferDate] = useState<string | null>(null);
+  const [existingOfferStatus, setExistingOfferStatus] = useState<string | null>(null);
 
   const [vin, setVin] = useState("");
   const [stockNumber, setStockNumber] = useState("");
@@ -159,12 +160,13 @@ export default function DealerOfferPage() {
         .select("*")
         .eq("request_id", requestId)
         .eq("dealer_id", auth.user.id)
-        .eq("status", "submitted")
+        .in("status", ["submitted", "accepted"])
         .maybeSingle();
 
       if (existing) {
         setExistingOfferId(existing.id);
         setExistingOfferDate(existing.created_at);
+        setExistingOfferStatus(existing.status);
         setVin(existing.vin ?? "");
         setStockNumber(existing.stock_number ?? "");
         setTrim(existing.trim ?? "");
@@ -240,11 +242,11 @@ export default function DealerOfferPage() {
       : await supabase.from("dealer_offers").insert({ request_id: requestId, dealer_id: user.id, ...payload });
 
     if (error) { setMsg(error.message); setSubmitting(false); return; }
-    router.push("/dealer/requests");
+    router.push("/dealer/offers");
   }
 
   return (
-    <main className="min-h-screen bg-muted/40 p-6">
+    <main className="min-h-screen bg-muted/40 p-4 sm:p-6">
       <div className="max-w-3xl mx-auto space-y-6">
 
         <div className="flex items-center justify-between">
@@ -258,8 +260,13 @@ export default function DealerOfferPage() {
           </div>
         </div>
 
-        {existingOfferId && existingOfferDate && (
-          <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+        {existingOfferId && existingOfferDate && existingOfferStatus === "accepted" && (
+          <div className="rounded-xl border border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-900/20 px-4 py-3 text-sm text-green-800 dark:text-green-300">
+            🎉 This offer was accepted by the buyer on {new Date(existingOfferDate).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}.
+          </div>
+        )}
+        {existingOfferId && existingOfferDate && existingOfferStatus === "submitted" && (
+          <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-4 py-3 text-sm text-blue-800 dark:text-blue-300">
             You submitted this offer on {new Date(existingOfferDate).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}.
             You can update any field below and save your changes.
           </div>
@@ -279,10 +286,10 @@ export default function DealerOfferPage() {
         )}
 
         {warnings.length > 0 && (
-          <Card className="border-amber-300 bg-amber-50">
+          <Card className="border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
             <CardContent className="p-4">
-              <p className="text-sm font-semibold text-amber-800 mb-2">Warnings (won't block submit):</p>
-              <ul className="list-disc ml-5 space-y-1 text-sm text-amber-700">
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300 mb-2">Warnings (won't block submit):</p>
+              <ul className="list-disc ml-5 space-y-1 text-sm text-amber-700 dark:text-amber-400">
                 {warnings.map((w, i) => <li key={i}>{w}</li>)}
               </ul>
             </CardContent>
@@ -317,8 +324,8 @@ export default function DealerOfferPage() {
                 </div>
                 <span className={cn(
                   "flex-shrink-0 text-xs px-2.5 py-1 rounded-full font-medium border",
-                  req.condition === "new"    ? "bg-blue-50 text-blue-700 border-blue-200" :
-                  req.condition === "used"   ? "bg-amber-50 text-amber-700 border-amber-200" :
+                  req.condition === "new"    ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800" :
+                  req.condition === "used"   ? "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800" :
                                               "bg-muted text-muted-foreground border-border"
                 )}>
                   {req.condition === "new" ? "New" : req.condition === "used" ? "Used" : "New or Used"}
@@ -385,7 +392,7 @@ export default function DealerOfferPage() {
             <CardTitle className="text-base">Vehicle</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FieldGroup label="VIN (optional)">
                 <Input placeholder="1HGCM82633A123456" value={vin} onChange={(e) => setVin(e.target.value)} />
               </FieldGroup>
@@ -408,7 +415,7 @@ export default function DealerOfferPage() {
             <CardTitle className="text-base">Pricing</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <FieldGroup label="Selling price *">
                 <Input type="number" value={sellingPrice} onChange={(e) => setSellingPrice(asInt(e.target.value))} />
               </FieldGroup>
@@ -475,7 +482,7 @@ export default function DealerOfferPage() {
             <CardTitle className="text-base">Fees &amp; Tax</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <FieldGroup label="Doc fee">
                 <Input type="number" value={docFee} onChange={(e) => setDocFee(asInt(e.target.value))} />
               </FieldGroup>
@@ -500,7 +507,7 @@ export default function DealerOfferPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <FieldGroup label={req?.payment_method === "lease" ? "Money factor" : "APR %"}>
                 <Input
                   type="number"
@@ -530,22 +537,22 @@ export default function DealerOfferPage() {
         <Card className="bg-muted/50">
           <CardContent className="p-5">
             <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-3">Computed totals</p>
-            <div className="grid grid-cols-3 gap-4 text-center">
+            <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center">
               <div>
                 <div className="text-xs text-muted-foreground mb-1">
                   {req?.payment_method === "lease" ? "Cap cost (OTD)" : "Out-the-door"}
                 </div>
-                <div className="text-2xl font-bold text-green-600 dark:text-green-400">${otdTotal.toLocaleString()}</div>
+                <div className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">${otdTotal.toLocaleString()}</div>
               </div>
               <div>
                 <div className="text-xs text-muted-foreground mb-1">
                   {req?.payment_method === "lease" ? "Net cap cost" : "Financed amount"}
                 </div>
-                <div className="text-2xl font-bold">${principal.toLocaleString()}</div>
+                <div className="text-xl sm:text-2xl font-bold">${principal.toLocaleString()}</div>
               </div>
               <div>
                 <div className="text-xs text-muted-foreground mb-1">Est. monthly</div>
-                <div className="text-2xl font-bold">${monthlyPaymentEst.toLocaleString()}/mo</div>
+                <div className="text-xl sm:text-2xl font-bold">${monthlyPaymentEst.toLocaleString()}/mo</div>
               </div>
             </div>
             <p className="text-xs text-muted-foreground mt-3">
@@ -556,11 +563,17 @@ export default function DealerOfferPage() {
           </CardContent>
         </Card>
 
-        <Button className="w-full" size="lg" onClick={submitOffer} disabled={submitting}>
-          {submitting
-            ? (existingOfferId ? "Saving…" : "Submitting…")
-            : (existingOfferId ? "Save Changes" : "Submit Offer")}
-        </Button>
+        {existingOfferStatus === "accepted" ? (
+          <Link href="/dealer/offers" className={cn(buttonVariants({ size: "lg" }), "w-full text-center")}>
+            Go to My Offers
+          </Link>
+        ) : (
+          <Button className="w-full" size="lg" onClick={submitOffer} disabled={submitting}>
+            {submitting
+              ? (existingOfferId ? "Saving…" : "Submitting…")
+              : (existingOfferId ? "Save Changes" : "Submit Offer")}
+          </Button>
+        )}
       </div>
     </main>
   );

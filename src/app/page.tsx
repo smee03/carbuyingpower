@@ -1,6 +1,5 @@
 import { ClipboardList, MessageSquare, Trophy } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import WaitlistForm from "./WaitlistForm"
 
 const steps = [
   {
@@ -44,16 +43,7 @@ export default function Home() {
         </div>
 
         {/* CTA */}
-        <form className="flex gap-2 max-w-sm mx-auto w-full">
-          <Input
-            type="email"
-            placeholder="Enter your email"
-            className="flex-1"
-          />
-          <Button type="submit" size="lg">
-            Get early access
-          </Button>
-        </form>
+        <WaitlistForm />
 
         {/* How it works */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 text-left">
