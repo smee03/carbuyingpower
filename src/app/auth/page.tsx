@@ -85,7 +85,7 @@ export default function AuthPage() {
           <p className="text-sm text-muted-foreground">
             {mode === "signup"
               ? "Start comparing dealer offers today."
-              : "Welcome back to CarBuyingPower."}
+              : "Welcome back to CarPub Market."}
           </p>
         </div>
 

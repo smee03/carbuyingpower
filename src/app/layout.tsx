@@ -23,8 +23,8 @@ const caveat = Caveat({
 });
 
 export const metadata: Metadata = {
-  title: "CarBuyingPower — Get competing dealer offers",
-  description: "Post your vehicle request and get transparent out-the-door prices from local dealers competing for your business.",
+  title: "CarPub Market — The people's car marketplace",
+  description: "Post your vehicle request and get transparent out-the-door prices from local dealers competing for your business. No brokers, no middlemen.",
 };
 
 export default function RootLayout({
@@ -39,7 +39,7 @@ export default function RootLayout({
           <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
             <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
               <Link href="/" className="font-handwriting font-bold text-2xl tracking-tight">
-                CarBuyingPower
+                CarPub Market
               </Link>
               <div className="flex items-center gap-2">
                 <ThemeToggle />

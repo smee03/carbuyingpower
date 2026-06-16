@@ -33,11 +33,13 @@ export default function Home() {
         {/* Headline */}
         <div className="space-y-4">
           <h1 className="font-handwriting text-6xl md:text-7xl font-bold leading-tight">
-            Dealers compete.<br className="hidden md:block" /> You decide.
+            Bringing power back<br className="hidden md:block" /> to the people.
           </h1>
+          <p className="text-2xl font-semibold tracking-tight">
+            Dealers come to you.
+          </p>
           <p className="text-xl text-muted-foreground leading-relaxed max-w-lg mx-auto">
-            Post your car request — local dealers respond with real out-the-door prices.
-            No brokers. Just you and the deal.
+            Car buying has always favored the dealer. We&apos;re changing that. Post what you want — local dealers compete for your business with real, transparent out-the-door prices. No brokers. No games. Just you and the deal.
           </p>
         </div>
 

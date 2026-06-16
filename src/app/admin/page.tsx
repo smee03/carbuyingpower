@@ -60,7 +60,7 @@ export default function AdminPage() {
     <main className="max-w-3xl mx-auto px-6 py-16 space-y-10">
       <div className="space-y-1">
         <h1 className="text-3xl font-bold tracking-tight">Admin</h1>
-        <p className="text-muted-foreground text-sm">CarBuyingPower internal dashboard</p>
+        <p className="text-muted-foreground text-sm">CarPub Market internal dashboard</p>
       </div>
 
       {/* Stats */}
