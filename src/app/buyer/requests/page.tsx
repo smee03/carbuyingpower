@@ -7,6 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { CheckCircle2, Circle } from "lucide-react";
 
 type BuyerRequest = {
   id: string;
@@ -119,6 +120,14 @@ export default function BuyerRequestsPage() {
           <StatCard title="Accepted Deals" value={acceptedCount} />
         </div>
 
+        {/* Getting started checklist */}
+        {!loading && acceptedCount === 0 && (
+          <GettingStarted
+            hasRequests={requests.length > 0}
+            hasOffers={offerCount > 0}
+          />
+        )}
+
         {/* Content */}
         {loading && <p>Loading…</p>}
         {msg && <p className="text-sm text-red-600">{msg}</p>}
@@ -207,4 +216,38 @@ function StatusBadge({ status }: { status: string }) {
     "outline";
 
   return <Badge variant={variant}>{status}</Badge>;
+}
+
+function GettingStarted({ hasRequests, hasOffers }: { hasRequests: boolean; hasOffers: boolean }) {
+  const steps = [
+    { label: "Create your account", done: true },
+    { label: "Post your first car request", done: hasRequests },
+    { label: "Receive a dealer offer", done: hasOffers },
+    { label: "Accept a deal", done: false },
+  ];
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
+      <div>
+        <h2 className="font-semibold text-base">Getting started</h2>
+        <p className="text-sm text-muted-foreground mt-0.5">Complete these steps to get your first deal.</p>
+      </div>
+      <ul className="space-y-3">
+        {steps.map((step) => (
+          <li key={step.label} className="flex items-center gap-3 text-sm">
+            {step.done
+              ? <CheckCircle2 className="size-5 text-primary shrink-0" />
+              : <Circle className="size-5 text-muted-foreground shrink-0" />
+            }
+            <span className={step.done ? "line-through text-muted-foreground" : ""}>{step.label}</span>
+          </li>
+        ))}
+      </ul>
+      {!hasRequests && (
+        <Link href="/buyer/new" className={cn(buttonVariants({ size: "sm" }), "mt-2")}>
+          Post your first request
+        </Link>
+      )}
+    </div>
+  );
 }
