@@ -100,5 +100,90 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
+  // Notify buyer of new offer (fire-and-forget — don't block the response)
+  sendNewOfferEmail(body.request_id, body.dealer_id, otd_total, req).catch(() => {});
+
   return NextResponse.json({ data });
+}
+
+async function sendNewOfferEmail(
+  requestId: string,
+  dealerId: string,
+  otdTotal: number,
+  req: NextRequest
+) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM;
+  if (!apiKey || !from) return;
+
+  const [requestRes, dealerRes] = await Promise.all([
+    supabaseAdmin
+      .from("buyer_requests")
+      .select("buyer_id, make, model, desired_models")
+      .eq("id", requestId)
+      .maybeSingle(),
+    supabaseAdmin
+      .from("profiles")
+      .select("display_name, email")
+      .eq("id", dealerId)
+      .maybeSingle(),
+  ]);
+
+  if (!requestRes.data) return;
+  const buyerRequest = requestRes.data as {
+    buyer_id: string;
+    make?: string | null;
+    model?: string | null;
+    desired_models?: string | null;
+  };
+
+  const dealerName =
+    (dealerRes.data as { display_name?: string | null } | null)?.display_name ?? "A dealer";
+
+  const buyerProfileRes = await supabaseAdmin
+    .from("profiles")
+    .select("display_name, email")
+    .eq("id", buyerRequest.buyer_id)
+    .maybeSingle();
+
+  let buyerEmail: string | null =
+    (buyerProfileRes.data as { email?: string | null } | null)?.email ?? null;
+  const buyerName =
+    (buyerProfileRes.data as { display_name?: string | null } | null)?.display_name ?? "there";
+
+  if (!buyerEmail) {
+    const authUser = await supabaseAdmin.auth.admin.getUserById(buyerRequest.buyer_id);
+    buyerEmail = authUser.data.user?.email ?? null;
+  }
+
+  if (!buyerEmail) return;
+
+  const vehicleTitle =
+    [buyerRequest.make, buyerRequest.model].filter(Boolean).join(" ").trim() ||
+    buyerRequest.desired_models ||
+    "your vehicle request";
+
+  const appUrl = process.env.APP_URL || new URL(req.url).origin;
+
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to: buyerEmail,
+      subject: `New offer on your ${vehicleTitle} request`,
+      text: [
+        `Hi ${buyerName},`,
+        "",
+        `${dealerName} just submitted an offer on your ${vehicleTitle} request.`,
+        `Out-the-door total: $${otdTotal.toLocaleString()}.`,
+        "",
+        `Review the offer: ${appUrl}/buyer/requests`,
+      ].join("\n"),
+      html: `<p>Hi ${buyerName},</p><p><b>${dealerName}</b> just submitted an offer on your <b>${vehicleTitle}</b> request.</p><p>Out-the-door total: <b>$${otdTotal.toLocaleString()}</b></p><p><a href="${appUrl}/buyer/requests">Review the offer →</a></p>`,
+    }),
+  });
 }
